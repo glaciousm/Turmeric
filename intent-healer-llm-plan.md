@@ -25,11 +25,14 @@ Build an LLM-powered execution layer for Cucumber/Selenium that automatically re
 10. [Public API](#10-public-api)
 11. [Cost and Performance](#11-cost-and-performance)
 12. [Security and Privacy](#12-security-and-privacy)
-13. [Roadmap](#13-roadmap)
-14. [Engineering Backlog](#14-engineering-backlog)
-15. [Validation Strategy](#15-validation-strategy)
-16. [Repository Structure](#16-repository-structure)
-17. [Implementation Guidelines](#17-implementation-guidelines)
+13. [Trust Progression Model](#13-trust-progression-model)
+14. [Feedback and Learning](#14-feedback-and-learning)
+15. [Success Metrics and Circuit Breakers](#15-success-metrics-and-circuit-breakers)
+16. [Roadmap](#16-roadmap)
+17. [Engineering Backlog](#17-engineering-backlog)
+18. [Validation Strategy](#18-validation-strategy)
+19. [Repository Structure](#19-repository-structure)
+20. [Implementation Guidelines](#20-implementation-guidelines)
 
 ---
 
@@ -2077,7 +2080,698 @@ llm:
 
 ---
 
-## 13. Roadmap
+## 13. Trust Progression Model
+
+Adoption fails without a clear path from skepticism to confidence. This section defines how teams graduate through trust levels and what evidence is required at each stage.
+
+### 13.1 Trust Levels
+
+| Level | Mode | Duration | Exit Criteria |
+|-------|------|----------|---------------|
+| **L0: Observation** | `OFF` | 1-2 weeks | Baseline metrics collected |
+| **L1: Shadow** | `SUGGEST` | 2-4 weeks | <2% suggestion error rate |
+| **L2: Supervised Auto** | `AUTO_SAFE` + mandatory review | 2-4 weeks | <0.5% false heal rate |
+| **L3: Autonomous** | `AUTO_SAFE` | Ongoing | Metrics stay within bounds |
+| **L4: Full Trust** | `AUTO_ALL` | Ongoing | Explicit opt-in only |
+
+### 13.2 Level Transitions
+
+#### L0 → L1 (Observation → Shadow)
+
+**Entry requirements:**
+- Healer installed and configured
+- At least 100 test executions completed
+- Baseline failure rate established
+
+**Process:**
+1. Enable `SUGGEST` mode
+2. Healer proposes heals but does not apply them
+3. Tests still fail, but heal suggestions are logged
+
+**Exit criteria for L1:**
+- 50+ heal suggestions generated
+- Team has reviewed at least 20 suggestions manually
+- Suggestion accuracy ≥98% (suggestions would have been correct)
+
+#### L1 → L2 (Shadow → Supervised Auto)
+
+**Entry requirements:**
+- Completed L1 with passing metrics
+- Review workflow established
+- Designated heal reviewer(s) assigned
+
+**Process:**
+1. Enable `AUTO_SAFE` mode
+2. All heals are applied automatically
+3. Every heal triggers a notification for human review within 24h
+4. Reviewers mark each heal as: `CORRECT`, `INCORRECT`, `UNCERTAIN`
+
+**Exit criteria for L2:**
+- 100+ heals reviewed
+- False heal rate <0.5%
+- No `INCORRECT` heals in last 50 reviewed
+- Average review completion <24h
+
+#### L2 → L3 (Supervised Auto → Autonomous)
+
+**Entry requirements:**
+- Completed L2 with passing metrics
+- Circuit breaker thresholds configured
+- Escalation path defined
+
+**Process:**
+1. Disable mandatory review
+2. Enable sampling-based review (10% of heals)
+3. Circuit breakers active
+
+**Exit criteria for L3:**
+- Sustained <0.5% false heal rate over 4 weeks
+- No circuit breaker trips
+- Team confidence survey ≥4/5
+
+#### L3 → L4 (Autonomous → Full Trust)
+
+This level is **optional and explicit**. Most teams should stay at L3.
+
+**Entry requirements:**
+- 12+ weeks at L3 without issues
+- Explicit sign-off from QA lead
+- Documentation of which destructive actions are permitted
+
+**Process:**
+1. Enable `AUTO_ALL` for specific intents only
+2. Requires per-intent allowlisting
+
+### 13.3 Trust Regression
+
+Trust can be lost. The system automatically demotes trust level when:
+
+| Trigger | Action |
+|---------|--------|
+| False heal rate >1% over 7 days | Demote to L1 (SUGGEST only) |
+| Circuit breaker trips | Demote to L1, require review |
+| 3+ `INCORRECT` reviews in 24h | Pause healing, alert team |
+| User reports missed regression | Investigate, potentially demote |
+
+**Recovery process:**
+1. Root cause analysis required
+2. Blacklist problematic patterns
+3. Re-enter L1 for minimum 1 week
+4. Re-satisfy exit criteria before promotion
+
+### 13.4 Trust Dashboard
+
+The dashboard displays:
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  HEALER TRUST STATUS                                    │
+├─────────────────────────────────────────────────────────┤
+│  Current Level: L3 (Autonomous)     Since: 2025-01-15  │
+│                                                         │
+│  Last 7 Days:                                          │
+│    Heals Applied:     47                               │
+│    Heals Reviewed:    5 (sampling)                     │
+│    False Heals:       0 (0.0%)                         │
+│    Avg Confidence:    0.89                             │
+│                                                         │
+│  Health Indicators:                                     │
+│    False Heal Rate:   ████████████░░░░ 0.3% (limit 1%) │
+│    Circuit Breaker:   ✓ OK                             │
+│    Review Backlog:    0                                 │
+│                                                         │
+│  [View History]  [Export Report]  [Adjust Settings]    │
+└─────────────────────────────────────────────────────────┘
+```
+
+### 13.5 Review Workflow
+
+For L2 (Supervised Auto), every heal enters a review queue:
+
+```java
+public class HealReviewWorkflow {
+    
+    public void submitForReview(HealEvent event) {
+        ReviewItem item = new ReviewItem();
+        item.setHealId(event.getId());
+        item.setStepText(event.getStepText());
+        item.setOriginalLocator(event.getOriginalLocator());
+        item.setHealedElement(event.getHealedElement());
+        item.setConfidence(event.getConfidence());
+        item.setReasoning(event.getReasoning());
+        item.setScreenshotBefore(event.getScreenshotBefore());
+        item.setScreenshotAfter(event.getScreenshotAfter());
+        item.setStatus(ReviewStatus.PENDING);
+        item.setDueBy(Instant.now().plus(24, ChronoUnit.HOURS));
+        
+        reviewQueue.add(item);
+        notifyReviewers(item);
+    }
+    
+    public void recordVerdict(String healId, ReviewVerdict verdict, String reviewerNotes) {
+        ReviewItem item = reviewQueue.get(healId);
+        item.setVerdict(verdict);
+        item.setReviewerNotes(reviewerNotes);
+        item.setReviewedAt(Instant.now());
+        item.setReviewedBy(getCurrentUser());
+        
+        // Feed into learning system
+        if (verdict == ReviewVerdict.INCORRECT) {
+            feedbackProcessor.recordIncorrectHeal(item);
+        }
+        
+        updateTrustMetrics(verdict);
+    }
+}
+
+public enum ReviewVerdict {
+    CORRECT,      // Heal was right
+    INCORRECT,    // Heal was wrong - would have masked a bug
+    UNCERTAIN,    // Reviewer can't determine
+    UNNECESSARY   // Heal worked but original would have too
+}
+```
+
+---
+
+## 14. Feedback and Learning
+
+When a heal is wrong and a human corrects it, the system must learn. Even without ML retraining, lightweight feedback loops materially improve accuracy over time.
+
+### 14.1 Feedback Types
+
+| Feedback Type | Source | Action |
+|---------------|--------|--------|
+| **Explicit rejection** | Reviewer marks heal as INCORRECT | Blacklist this specific match |
+| **Manual fix** | Human updates locator after heal | Learn the correct pattern |
+| **Regression report** | Bug found that heal masked | High-priority blacklist + alert |
+| **Confidence override** | Reviewer says "this should have been lower/higher" | Adjust confidence calibration |
+
+### 14.2 Blacklist System
+
+When a heal is marked incorrect, the system records a blacklist entry:
+
+```java
+public class HealBlacklist {
+    
+    // Blacklist entry: "never match X to Y in context Z"
+    public void addBlacklistEntry(BlacklistEntry entry) {
+        entries.add(entry);
+        persist();
+    }
+    
+    public boolean isBlacklisted(FailureContext failure, ElementSnapshot candidate) {
+        for (BlacklistEntry entry : entries) {
+            if (entry.matches(failure, candidate)) {
+                logger.info("Candidate blocked by blacklist: {}", entry.getReason());
+                return true;
+            }
+        }
+        return false;
+    }
+}
+
+public class BlacklistEntry {
+    private String id;
+    private Instant createdAt;
+    private String createdBy;
+    
+    // Match criteria (any combination)
+    private String stepTextPattern;        // Regex for step text
+    private String originalLocatorPattern; // Regex for original locator
+    private String pageUrlPattern;         // Regex for page URL
+    private String candidateTextPattern;   // Regex for candidate element text
+    private String candidateIdPattern;     // Regex for candidate element ID
+    
+    // Context
+    private String reason;                 // Why this was blacklisted
+    private String healIdThatFailed;       // Reference to the bad heal
+    
+    // Expiry (optional)
+    private Instant expiresAt;             // Auto-expire if UI might have changed back
+    
+    public boolean matches(FailureContext failure, ElementSnapshot candidate) {
+        // All non-null patterns must match
+        if (stepTextPattern != null && 
+            !failure.getStepText().matches(stepTextPattern)) {
+            return false;
+        }
+        if (candidateTextPattern != null && 
+            !candidate.getText().matches(candidateTextPattern)) {
+            return false;
+        }
+        // ... etc
+        return true;
+    }
+}
+```
+
+**Example blacklist entries:**
+
+```yaml
+blacklist:
+  - id: bl-001
+    reason: "Submit Order vs Cancel Order confusion"
+    step_text_pattern: ".*submit.*order.*"
+    candidate_text_pattern: "(?i)cancel.*"
+    created_by: "jsmith"
+    created_at: "2025-01-15T10:30:00Z"
+    
+  - id: bl-002  
+    reason: "Login vs Logout button on header"
+    page_url_pattern: ".*/dashboard.*"
+    original_locator_pattern: ".*login.*"
+    candidate_text_pattern: "(?i)log\\s*out.*"
+    created_by: "mjones"
+    created_at: "2025-01-16T14:20:00Z"
+```
+
+### 14.3 Confidence Calibration
+
+Track whether confidence scores correlate with actual accuracy:
+
+```java
+public class ConfidenceCalibrator {
+    
+    // Buckets: 0.75-0.80, 0.80-0.85, 0.85-0.90, 0.90-0.95, 0.95-1.00
+    private Map<String, CalibrationBucket> buckets = new HashMap<>();
+    
+    public void recordOutcome(double confidence, boolean wasCorrect) {
+        String bucketKey = getBucketKey(confidence);
+        CalibrationBucket bucket = buckets.computeIfAbsent(bucketKey, CalibrationBucket::new);
+        bucket.record(wasCorrect);
+    }
+    
+    public CalibrationReport getReport() {
+        // Shows: for heals at 0.85-0.90 confidence, actual accuracy was X%
+        // If confidence says 87% but actual is 72%, we're overconfident
+    }
+    
+    public double adjustConfidence(double rawConfidence) {
+        // Apply calibration adjustment based on historical data
+        CalibrationBucket bucket = buckets.get(getBucketKey(rawConfidence));
+        if (bucket == null || bucket.getSampleSize() < 20) {
+            return rawConfidence; // Not enough data
+        }
+        
+        double actualAccuracy = bucket.getAccuracy();
+        double expectedAccuracy = bucket.getMidpoint();
+        
+        // If we're overconfident, reduce; if underconfident, increase
+        double adjustment = actualAccuracy - expectedAccuracy;
+        return Math.max(0, Math.min(1, rawConfidence + adjustment));
+    }
+}
+```
+
+**Calibration report example:**
+
+```
+Confidence Calibration Report (Last 30 Days)
+─────────────────────────────────────────────
+Confidence Range    Expected    Actual    Status
+0.75 - 0.80         77.5%       71.2%     OVERCONFIDENT (-6.3%)
+0.80 - 0.85         82.5%       80.1%     OK
+0.85 - 0.90         87.5%       88.3%     OK
+0.90 - 0.95         92.5%       94.1%     OK
+0.95 - 1.00         97.5%       99.2%     UNDERCONFIDENT (+1.7%)
+
+Recommendation: Lower confidence threshold from 0.80 to 0.82
+```
+
+### 14.4 Pattern Learning
+
+Without ML, the system can still learn patterns from corrections:
+
+```java
+public class PatternLearner {
+    
+    // When human provides the correct element after a bad heal
+    public void learnCorrection(HealEvent badHeal, ElementSnapshot correctElement) {
+        
+        // Record what the human chose
+        CorrectionRecord record = new CorrectionRecord();
+        record.setFailureContext(badHeal.getFailureContext());
+        record.setIncorrectChoice(badHeal.getHealedElement());
+        record.setCorrectChoice(correctElement);
+        record.setTimestamp(Instant.now());
+        
+        corrections.add(record);
+        
+        // Extract learnable pattern
+        LearnedPattern pattern = extractPattern(badHeal, correctElement);
+        if (pattern != null) {
+            patterns.add(pattern);
+            logger.info("Learned pattern: {}", pattern.describe());
+        }
+    }
+    
+    private LearnedPattern extractPattern(HealEvent badHeal, ElementSnapshot correct) {
+        // Example: "For steps containing 'submit', prefer elements with 
+        // data-testid containing 'submit' over elements with similar text"
+        
+        // Check if correct element has data-testid that matches step keywords
+        String stepKeywords = extractKeywords(badHeal.getStepText());
+        if (correct.getDataTestId() != null && 
+            containsAny(correct.getDataTestId(), stepKeywords)) {
+            return new PreferDataTestIdPattern(stepKeywords);
+        }
+        
+        // Check if correct element was in a different container
+        if (!correct.getContainer().equals(badHeal.getHealedElement().getContainer())) {
+            return new PreferContainerPattern(
+                badHeal.getStepText(), 
+                correct.getContainer()
+            );
+        }
+        
+        return null; // No learnable pattern identified
+    }
+    
+    // Apply learned patterns to boost/penalize candidates
+    public double applyPatterns(FailureContext failure, ElementSnapshot candidate, double baseConfidence) {
+        double adjusted = baseConfidence;
+        
+        for (LearnedPattern pattern : patterns) {
+            if (pattern.applies(failure, candidate)) {
+                adjusted *= pattern.getMultiplier(); // e.g., 1.1 to boost, 0.9 to penalize
+            }
+        }
+        
+        return Math.max(0, Math.min(1, adjusted));
+    }
+}
+```
+
+### 14.5 Feedback API
+
+Teams can programmatically submit feedback:
+
+```java
+public interface FeedbackApi {
+    
+    /**
+     * Report that a heal was incorrect.
+     */
+    void reportIncorrectHeal(String healId, String reason, ElementSnapshot correctElement);
+    
+    /**
+     * Report that a heal masked a real bug.
+     */
+    void reportMaskedRegression(String healId, String bugId, String description);
+    
+    /**
+     * Add a blacklist entry directly.
+     */
+    void addBlacklistEntry(BlacklistEntry entry);
+    
+    /**
+     * Remove a blacklist entry (e.g., after UI reverted).
+     */
+    void removeBlacklistEntry(String entryId);
+    
+    /**
+     * Export all feedback data for analysis.
+     */
+    FeedbackExport exportFeedback(Instant since);
+}
+```
+
+### 14.6 Feedback Persistence
+
+All feedback is persisted and versioned:
+
+```yaml
+feedback:
+  storage: file  # file | database | s3
+  file_path: .healer/feedback/
+  
+  # Files created:
+  # - blacklist.yaml       (current blacklist entries)
+  # - corrections.jsonl    (append-only correction log)
+  # - calibration.json     (confidence calibration data)
+  # - patterns.yaml        (learned patterns)
+```
+
+---
+
+## 15. Success Metrics and Circuit Breakers
+
+Without hard metrics, healing becomes opinion-driven. This section defines the exact thresholds that determine success and trigger automatic safety responses.
+
+### 15.1 Primary Success Metrics
+
+| Metric | Definition | Target | Unacceptable |
+|--------|------------|--------|--------------|
+| **False Heal Rate** | Heals marked INCORRECT / Total heals applied | <0.5% | >1.0% |
+| **Heal Success Rate** | Heals that passed outcome validation / Total heal attempts | >85% | <70% |
+| **Confidence Calibration Error** | Avg abs(predicted confidence - actual accuracy) | <5% | >10% |
+| **Mean Heal Latency** | Avg time from failure to heal completion | <3s | >10s |
+| **Cache Hit Rate** | Heals served from cache / Total heals | >60% | <30% |
+
+### 15.2 Secondary Metrics
+
+| Metric | Definition | Target |
+|--------|------------|--------|
+| **Maintenance Time Saved** | Hours not spent fixing locators (estimated) | Track trend |
+| **Release Delay Avoided** | Incidents where healing prevented deploy block | Track count |
+| **Review Turnaround** | Time from heal to human review completion | <24h |
+| **Blacklist Growth Rate** | New blacklist entries per week | Declining over time |
+| **Trust Level** | Current trust level (L0-L4) | L3+ after ramp-up |
+
+### 15.3 Circuit Breakers
+
+Circuit breakers automatically disable healing when metrics exceed safe bounds.
+
+```java
+public class HealingCircuitBreaker {
+    
+    private final CircuitBreakerConfig config;
+    private CircuitState state = CircuitState.CLOSED; // CLOSED = healing enabled
+    
+    public boolean shouldAllowHealing() {
+        if (state == CircuitState.OPEN) {
+            if (shouldAttemptReset()) {
+                state = CircuitState.HALF_OPEN;
+                return true; // Allow one heal to test
+            }
+            return false;
+        }
+        return true;
+    }
+    
+    public void recordHealOutcome(HealOutcome outcome) {
+        metrics.record(outcome);
+        
+        // Check all circuit breaker conditions
+        if (checkFalseHealRateBreaker() ||
+            checkConsecutiveFailureBreaker() ||
+            checkLatencyBreaker() ||
+            checkCostBreaker()) {
+            
+            tripBreaker();
+        }
+        
+        // If in HALF_OPEN and heal succeeded, close the breaker
+        if (state == CircuitState.HALF_OPEN && outcome.isSuccess()) {
+            state = CircuitState.CLOSED;
+            notifyBreakerReset();
+        }
+    }
+    
+    private boolean checkFalseHealRateBreaker() {
+        double rate = metrics.getFalseHealRate(Duration.ofDays(7));
+        return rate > config.getMaxFalseHealRate(); // default: 1%
+    }
+    
+    private boolean checkConsecutiveFailureBreaker() {
+        int consecutive = metrics.getConsecutiveFailures();
+        return consecutive >= config.getMaxConsecutiveFailures(); // default: 3
+    }
+    
+    private boolean checkLatencyBreaker() {
+        double p95 = metrics.getP95Latency(Duration.ofHours(1));
+        return p95 > config.getMaxP95Latency(); // default: 10s
+    }
+    
+    private boolean checkCostBreaker() {
+        double cost = metrics.getCostToday();
+        return cost > config.getMaxDailyCost(); // default: $10
+    }
+    
+    private void tripBreaker() {
+        state = CircuitState.OPEN;
+        lastTrip = Instant.now();
+        
+        logger.error("CIRCUIT BREAKER TRIPPED - Healing disabled");
+        notifyTeam(createBreakerAlert());
+        
+        // Auto-demote trust level
+        trustManager.demoteToLevel(TrustLevel.L1_SHADOW);
+    }
+}
+```
+
+### 15.4 Circuit Breaker Configuration
+
+```yaml
+circuit_breaker:
+  enabled: true
+  
+  # False heal rate breaker
+  false_heal_rate:
+    threshold: 0.01        # 1%
+    window: 7d
+    min_samples: 20        # Don't trip with insufficient data
+  
+  # Consecutive failure breaker  
+  consecutive_failures:
+    threshold: 3           # 3 failures in a row
+    
+  # Latency breaker
+  latency:
+    p95_threshold_ms: 10000  # 10 seconds
+    window: 1h
+    
+  # Cost breaker
+  cost:
+    daily_limit_usd: 10.00
+    
+  # Recovery
+  recovery:
+    cooldown_minutes: 30     # Wait before attempting reset
+    test_heals_required: 3   # Successful heals to fully close
+    
+  # Notifications
+  notifications:
+    on_trip: [slack, email]
+    on_reset: [slack]
+    channels:
+      slack: "#qa-alerts"
+      email: ["qa-team@company.com"]
+```
+
+### 15.5 Automatic Healing Disable Conditions
+
+Healing automatically disables (mode → OFF) when:
+
+| Condition | Threshold | Recovery |
+|-----------|-----------|----------|
+| False heal rate sustained | >1% for 7 days | Manual re-enable after review |
+| Cost overrun | >200% of daily limit | Resets next day |
+| LLM provider unavailable | >5 min | Auto-retry every 1 min |
+| Circuit breaker trips 3x in 7 days | N/A | Requires manual investigation |
+
+### 15.6 Metrics Collection
+
+```java
+public class HealMetricsCollector {
+    
+    private final MeterRegistry registry;
+    
+    public void recordHealAttempt(HealAttempt attempt) {
+        // Counter: total heal attempts
+        registry.counter("healer.attempts.total",
+            "outcome", attempt.getOutcome().name(),
+            "action_type", attempt.getActionType().name()
+        ).increment();
+        
+        // Gauge: current false heal rate
+        registry.gauge("healer.false_heal_rate", 
+            calculateFalseHealRate(Duration.ofDays(7)));
+        
+        // Timer: heal latency
+        registry.timer("healer.latency",
+            "cache_hit", String.valueOf(attempt.wasCacheHit())
+        ).record(attempt.getDuration());
+        
+        // Counter: LLM cost
+        registry.counter("healer.llm_cost_cents")
+            .increment(attempt.getCostCents());
+    }
+    
+    // Prometheus/Grafana compatible metrics
+    public String getPrometheusMetrics() {
+        return prometheusRegistry.scrape();
+    }
+}
+```
+
+### 15.7 Alerting Thresholds
+
+```yaml
+alerts:
+  # Warning: metrics degrading but not critical
+  warning:
+    false_heal_rate: 0.5%    # Half of circuit breaker threshold
+    heal_success_rate: 80%   # Slightly below target
+    p95_latency_ms: 5000     # Half of circuit breaker threshold
+    
+  # Critical: immediate attention required
+  critical:
+    false_heal_rate: 1.0%    # Circuit breaker threshold
+    heal_success_rate: 70%   # Unacceptable threshold
+    consecutive_failures: 2   # One away from breaker trip
+    
+  # Channels
+  warning_channels: [slack]
+  critical_channels: [slack, pagerduty, email]
+```
+
+### 15.8 Weekly Health Report
+
+Automatically generated summary:
+
+```
+═══════════════════════════════════════════════════════════════
+                    HEALER WEEKLY REPORT
+                    Week of 2025-01-13
+═══════════════════════════════════════════════════════════════
+
+SUMMARY
+───────
+Trust Level:        L3 (Autonomous)
+Overall Health:     ✓ HEALTHY
+
+KEY METRICS
+───────────
+                    This Week    Last Week    Target    Status
+False Heal Rate:    0.21%        0.35%        <0.5%     ✓
+Heal Success Rate:  91.2%        89.8%        >85%      ✓
+Avg Latency:        1.8s         2.1s         <3s       ✓
+Cache Hit Rate:     72%          68%          >60%      ✓
+Total Heals:        234          198          -         -
+Total Cost:         $1.87        $1.62        <$10      ✓
+
+HEALS BY TYPE
+─────────────
+Click actions:      156 (67%)
+Type actions:       52 (22%)
+Select actions:     26 (11%)
+
+TOP HEALED STEPS
+────────────────
+1. "When the user clicks the submit button" - 23 heals
+2. "When the user enters their email" - 18 heals
+3. "When the user clicks Continue" - 15 heals
+
+ISSUES
+──────
+• 1 blacklist entry added (bl-047: Login/Logout confusion on /settings)
+• 0 circuit breaker trips
+• 0 regressions reported
+
+RECOMMENDATIONS
+───────────────
+• Consider adding data-testid to submit buttons (23 heals could be avoided)
+• /settings page has unstable locators - 12 heals this week
+
+═══════════════════════════════════════════════════════════════
+```
+
+---
+
+## 16. Roadmap
 
 ### Phase 0: Foundation (Weeks 1-2)
 
@@ -2197,7 +2891,27 @@ llm:
 - Cost limits are enforced
 - Performance overhead is acceptable (<500ms for cache hit)
 
-### Phase 7: Production Hardening (Weeks 21-24)
+### Phase 6.5: Trust and Feedback Systems (Weeks 21-23)
+
+**Deliverables:**
+
+- Trust level state machine (L0-L4)
+- Circuit breaker implementation
+- Metrics collector (Prometheus/Grafana compatible)
+- Blacklist system with persistence
+- Review workflow and queue
+- Confidence calibration tracker
+- Weekly health report generator
+
+**Acceptance Criteria:**
+
+- Trust levels transition correctly based on metrics
+- Circuit breaker trips and recovers as configured
+- Blacklist entries prevent bad heals from recurring
+- Review workflow integrates with team processes
+- Health reports accurately reflect system state
+
+### Phase 7: Production Hardening (Weeks 24-27)
 
 **Deliverables:**
 
@@ -2217,7 +2931,7 @@ llm:
 
 ---
 
-## 14. Engineering Backlog
+## 17. Engineering Backlog
 
 ### Must-Have (v1.0)
 
@@ -2240,6 +2954,11 @@ llm:
 - [ ] HTML report generator
 - [ ] Heal caching
 - [ ] Cost tracking
+- [ ] **Trust level state machine (L0-L4)**
+- [ ] **Circuit breaker implementation**
+- [ ] **Metrics collector (false heal rate, latency, success rate)**
+- [ ] **Blacklist system**
+- [ ] **Review workflow API**
 
 ### Should-Have (v1.1)
 
@@ -2256,6 +2975,11 @@ llm:
 - [ ] Locator patch suggestion (generate fixed locators)
 - [ ] TestNG listener
 - [ ] JUnit extension
+- [ ] **Confidence calibration system**
+- [ ] **Pattern learner from corrections**
+- [ ] **Trust dashboard UI**
+- [ ] **Weekly health report generator**
+- [ ] **Feedback API (programmatic correction submission)**
 
 ### Nice-to-Have (v1.2+)
 
@@ -2267,12 +2991,16 @@ llm:
 - [ ] Trend analysis dashboard
 - [ ] Auto-generated step definitions
 - [ ] Locator stability scoring
+- [ ] **Automatic trust level promotion**
+- [ ] **Blacklist expiry and cleanup**
+- [ ] **Cross-project pattern sharing**
+- [ ] **Regression prediction (warn before heal might fail)**
 
 ---
 
-## 15. Validation Strategy
+## 18. Validation Strategy
 
-### 15.1 Test Applications
+### 18.1 Test Applications
 
 Build or use 3+ diverse test applications:
 
@@ -2291,7 +3019,7 @@ Build or use 3+ diverse test applications:
    - Stale elements
    - Dynamic content loading
 
-### 15.2 Test Scenarios
+### 18.2 Test Scenarios
 
 **True Positives (should heal successfully):**
 
@@ -2312,7 +3040,7 @@ Build or use 3+ diverse test applications:
 - MFA step introduced
 - Low-confidence candidates only
 
-### 15.3 Metrics
+### 18.3 Metrics
 
 | Metric | Target | Measurement |
 |--------|--------|-------------|
@@ -2323,7 +3051,7 @@ Build or use 3+ diverse test applications:
 | Latency (cache hit) | <500ms | P95 time for cached heal |
 | Cost per heal | <$0.001 | Avg LLM cost per successful heal |
 
-### 15.4 Regression Tests for Healer
+### 18.4 Regression Tests for Healer
 
 ```java
 @Test
@@ -2359,7 +3087,7 @@ void shouldRespectAssertionSteps() {
 
 ---
 
-## 16. Repository Structure
+## 19. Repository Structure
 
 ```
 intent-healer/
@@ -2410,9 +3138,9 @@ intent-healer/
 
 ---
 
-## 17. Implementation Guidelines
+## 20. Implementation Guidelines
 
-### 17.1 Code Standards
+### 20.1 Code Standards
 
 - Java 17+ (records, sealed classes, pattern matching)
 - Null safety via `Optional<T>` and `@Nullable`/`@NonNull` annotations
@@ -2420,7 +3148,7 @@ intent-healer/
 - Builder pattern for complex objects
 - Comprehensive Javadoc on public APIs
 
-### 17.2 Testing Requirements
+### 20.2 Testing Requirements
 
 - Unit tests for all business logic
 - Integration tests for LLM providers (with mocks for CI)
@@ -2428,7 +3156,7 @@ intent-healer/
 - Contract tests for prompt/response formats
 - Performance tests for snapshot and scoring
 
-### 17.3 Logging Standards
+### 20.3 Logging Standards
 
 ```java
 // Use structured logging
@@ -2454,7 +3182,7 @@ logger.info("Heal decision", Map.of(
 ));
 ```
 
-### 17.4 Error Handling
+### 20.4 Error Handling
 
 ```java
 // Specific exceptions for specific failures
@@ -2475,7 +3203,7 @@ public enum HealingFailureReason {
 }
 ```
 
-### 17.5 Performance Guidelines
+### 20.5 Performance Guidelines
 
 - Snapshot capture: max 500ms
 - LLM call: max 30s timeout
