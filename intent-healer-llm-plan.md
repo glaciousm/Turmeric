@@ -2962,16 +2962,16 @@ RECOMMENDATIONS
 
 ### Should-Have (v1.1)
 
-- [ ] Input field healing
-- [ ] Select/dropdown healing
+- [x] Input field healing
+- [x] Select/dropdown healing
 - [x] @Outcome annotation with custom checks
 - [x] @Invariant annotation
 - [ ] LLM-based outcome validation
-- [ ] Ollama/local model support
+- [x] Ollama/local model support
 - [ ] Azure OpenAI support
 - [ ] AWS Bedrock support
-- [ ] Iframe handling
-- [ ] Shadow DOM handling
+- [x] Iframe handling
+- [x] Shadow DOM handling
 - [ ] Locator patch suggestion (generate fixed locators)
 - [ ] TestNG listener
 - [ ] JUnit extension
