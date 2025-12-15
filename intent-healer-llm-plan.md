@@ -2978,7 +2978,7 @@ RECOMMENDATIONS
 - [x] **Confidence calibration system**
 - [ ] **Pattern learner from corrections**
 - [ ] **Trust dashboard UI**
-- [ ] **Weekly health report generator**
+- [x] **Weekly health report generator**
 - [x] **Feedback API (programmatic correction submission)**
 
 ### Nice-to-Have (v1.2+)
