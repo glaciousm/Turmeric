@@ -7,6 +7,8 @@ include("healer-cucumber")
 include("healer-report")
 include("healer-cli")
 include("healer-example")
+include("healer-testng")
+include("healer-junit")
 
 dependencyResolutionManagement {
     versionCatalogs {

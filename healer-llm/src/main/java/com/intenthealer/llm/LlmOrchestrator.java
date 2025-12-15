@@ -4,6 +4,7 @@ import com.intenthealer.core.config.LlmConfig;
 import com.intenthealer.core.exception.LlmException;
 import com.intenthealer.core.model.*;
 import com.intenthealer.llm.providers.AnthropicProvider;
+import com.intenthealer.llm.providers.AzureOpenAiProvider;
 import com.intenthealer.llm.providers.OllamaProvider;
 import com.intenthealer.llm.providers.OpenAiProvider;
 import org.slf4j.Logger;
@@ -34,6 +35,8 @@ public class LlmOrchestrator {
         providers.put("anthropic", new AnthropicProvider());
         providers.put("ollama", new OllamaProvider());
         providers.put("local", new OllamaProvider()); // Alias for ollama
+        providers.put("azure", new AzureOpenAiProvider());
+        providers.put("azure-openai", new AzureOpenAiProvider()); // Alias for azure
     }
 
     /**

@@ -2968,13 +2968,13 @@ RECOMMENDATIONS
 - [x] @Invariant annotation
 - [ ] LLM-based outcome validation
 - [x] Ollama/local model support
-- [ ] Azure OpenAI support
+- [x] Azure OpenAI support
 - [ ] AWS Bedrock support
 - [x] Iframe handling
 - [x] Shadow DOM handling
-- [ ] Locator patch suggestion (generate fixed locators)
-- [ ] TestNG listener
-- [ ] JUnit extension
+- [x] Locator patch suggestion (generate fixed locators)
+- [x] TestNG listener
+- [x] JUnit extension
 - [ ] **Confidence calibration system**
 - [ ] **Pattern learner from corrections**
 - [ ] **Trust dashboard UI**
