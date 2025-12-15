@@ -1,0 +1,163 @@
+{
+  "name": "intent-healer",
+  "displayName": "Intent Healer",
+  "description": "LLM-powered self-healing for Selenium tests - View heal history, trust levels, and manage heals",
+  "version": "1.0.0",
+  "publisher": "intent-healer",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Testing",
+    "Other"
+  ],
+  "keywords": [
+    "selenium",
+    "testing",
+    "healing",
+    "cucumber",
+    "automation"
+  ],
+  "activationEvents": [
+    "onStartupFinished",
+    "workspaceContains:**/*.feature"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "intent-healer",
+          "title": "Intent Healer",
+          "icon": "resources/healer-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "intent-healer": [
+        {
+          "id": "healHistory",
+          "name": "Heal History"
+        },
+        {
+          "id": "trustLevel",
+          "name": "Trust Level"
+        },
+        {
+          "id": "locatorStability",
+          "name": "Locator Stability"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "intentHealer.refreshHistory",
+        "title": "Refresh Heal History",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "intentHealer.acceptHeal",
+        "title": "Accept Heal"
+      },
+      {
+        "command": "intentHealer.rejectHeal",
+        "title": "Reject Heal"
+      },
+      {
+        "command": "intentHealer.blacklistHeal",
+        "title": "Blacklist Heal"
+      },
+      {
+        "command": "intentHealer.openDashboard",
+        "title": "Open Dashboard"
+      },
+      {
+        "command": "intentHealer.exportReport",
+        "title": "Export Report"
+      },
+      {
+        "command": "intentHealer.clearCache",
+        "title": "Clear Heal Cache"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "intentHealer.refreshHistory",
+          "when": "view == healHistory",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "intentHealer.acceptHeal",
+          "when": "view == healHistory && viewItem == healEntry"
+        },
+        {
+          "command": "intentHealer.rejectHeal",
+          "when": "view == healHistory && viewItem == healEntry"
+        },
+        {
+          "command": "intentHealer.blacklistHeal",
+          "when": "view == healHistory && viewItem == healEntry"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Intent Healer",
+      "properties": {
+        "intentHealer.cacheDirectory": {
+          "type": "string",
+          "default": ".intent-healer",
+          "description": "Directory for heal cache files"
+        },
+        "intentHealer.autoRefresh": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically refresh heal history"
+        },
+        "intentHealer.refreshInterval": {
+          "type": "number",
+          "default": 30,
+          "description": "Auto-refresh interval in seconds"
+        },
+        "intentHealer.showNotifications": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show notifications for new heals"
+        },
+        "intentHealer.confidenceWarningThreshold": {
+          "type": "number",
+          "default": 0.75,
+          "description": "Show warnings for heals below this confidence"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/glob": "^8.1.0",
+    "@types/mocha": "^10.0.6",
+    "@types/node": "^20.10.0",
+    "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0",
+    "@vscode/test-electron": "^2.3.8",
+    "eslint": "^8.55.0",
+    "glob": "^10.3.10",
+    "mocha": "^10.2.0",
+    "typescript": "^5.3.2",
+    "vsce": "^2.15.0"
+  },
+  "dependencies": {
+    "glob": "^10.3.10"
+  }
+}

@@ -2985,8 +2985,8 @@ RECOMMENDATIONS
 
 - [x] Visual comparison (screenshot diff) - `ScreenshotComparator`
 - [x] Multi-step flow healing - `MultiStepFlowHealer`
-- [ ] Custom fine-tuned model support
-- [ ] VS Code extension for viewing reports
+- [x] Custom fine-tuned model support - `FineTunedModelProvider`
+- [x] VS Code extension for viewing reports - `healer-vscode` module
 - [x] Slack/Teams notifications - `NotificationService`
 - [x] Trend analysis dashboard - `TrendAnalysisDashboard`
 - [x] Auto-generated step definitions - `StepDefinitionGenerator`
