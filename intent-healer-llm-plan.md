@@ -2935,37 +2935,37 @@ RECOMMENDATIONS
 
 ### Must-Have (v1.0)
 
-- [ ] Core models and configuration
-- [ ] OpenAI provider implementation
-- [ ] Anthropic provider implementation
-- [ ] UI snapshot builder (clickable elements)
-- [ ] Prompt builder with element formatting
-- [ ] Response parser with JSON validation
-- [ ] Healing orchestrator
-- [ ] Pre-LLM guardrails (destructive action check)
-- [ ] Post-LLM guardrails (confidence threshold, forbidden keywords)
-- [ ] Action executor (click, type)
-- [ ] Element re-finder
-- [ ] Basic outcome checks (URL change, element visible)
-- [ ] Basic invariant checks (no error banner)
-- [ ] Cucumber plugin and hooks
-- [ ] @Intent annotation
-- [ ] JSON report generator
-- [ ] HTML report generator
-- [ ] Heal caching
-- [ ] Cost tracking
-- [ ] **Trust level state machine (L0-L4)**
-- [ ] **Circuit breaker implementation**
-- [ ] **Metrics collector (false heal rate, latency, success rate)**
-- [ ] **Blacklist system**
-- [ ] **Review workflow API**
+- [x] Core models and configuration
+- [x] OpenAI provider implementation
+- [x] Anthropic provider implementation
+- [x] UI snapshot builder (clickable elements)
+- [x] Prompt builder with element formatting
+- [x] Response parser with JSON validation
+- [x] Healing orchestrator
+- [x] Pre-LLM guardrails (destructive action check)
+- [x] Post-LLM guardrails (confidence threshold, forbidden keywords)
+- [x] Action executor (click, type)
+- [x] Element re-finder
+- [x] Basic outcome checks (URL change, element visible)
+- [x] Basic invariant checks (no error banner)
+- [x] Cucumber plugin and hooks
+- [x] @Intent annotation
+- [x] JSON report generator
+- [x] HTML report generator
+- [x] Heal caching
+- [x] Cost tracking
+- [x] **Trust level state machine (L0-L4)**
+- [x] **Circuit breaker implementation**
+- [x] **Metrics collector (false heal rate, latency, success rate)**
+- [x] **Blacklist system**
+- [x] **Review workflow API**
 
 ### Should-Have (v1.1)
 
 - [ ] Input field healing
 - [ ] Select/dropdown healing
-- [ ] @Outcome annotation with custom checks
-- [ ] @Invariant annotation
+- [x] @Outcome annotation with custom checks
+- [x] @Invariant annotation
 - [ ] LLM-based outcome validation
 - [ ] Ollama/local model support
 - [ ] Azure OpenAI support
