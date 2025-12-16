@@ -31,7 +31,6 @@
         <!-- Tool Window -->
         <toolWindow id="Intent Healer"
                     secondary="true"
-                    icon="/icons/healer-icon.svg"
                     anchor="right"
                     factoryClass="com.intenthealer.intellij.ui.HealerToolWindowFactory"/>
 
@@ -68,14 +67,12 @@
             <action id="IntentHealer.OpenDashboard"
                     class="com.intenthealer.intellij.actions.OpenDashboardAction"
                     text="Open Dashboard"
-                    description="Open the Intent Healer dashboard"
-                    icon="/icons/dashboard.svg"/>
+                    description="Open the Intent Healer dashboard"/>
 
             <action id="IntentHealer.ViewHistory"
                     class="com.intenthealer.intellij.actions.ViewHistoryAction"
                     text="View Heal History"
-                    description="View recent heal history"
-                    icon="/icons/history.svg"/>
+                    description="View recent heal history"/>
 
             <separator/>
 

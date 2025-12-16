@@ -87,6 +87,23 @@ public class ReportConfig {
         this.maxArtifactsPerReport = maxArtifactsPerReport;
     }
 
+    /**
+     * Check if reporting is enabled (at least one format enabled).
+     */
+    public boolean isEnabled() {
+        return jsonEnabled || htmlEnabled;
+    }
+
+    /**
+     * Get the format string for display.
+     */
+    public String getFormat() {
+        if (jsonEnabled && htmlEnabled) return "both";
+        if (jsonEnabled) return "json";
+        if (htmlEnabled) return "html";
+        return "none";
+    }
+
     @Override
     public String toString() {
         return "ReportConfig{outputDir='" + outputDir + "', jsonEnabled=" + jsonEnabled +

@@ -18,7 +18,7 @@ public class CacheCommand {
      * Show cache statistics.
      */
     public void stats() {
-        HealerConfig config = ConfigLoader.load();
+        HealerConfig config = new ConfigLoader().load();
         HealCache cache = new HealCache(config.getCache());
 
         HealCache.CacheStats stats = cache.getStats();
@@ -50,7 +50,7 @@ public class CacheCommand {
             return;
         }
 
-        HealerConfig config = ConfigLoader.load();
+        HealerConfig config = new ConfigLoader().load();
 
         // Clear in-memory cache
         HealCache cache = new HealCache(config.getCache());
@@ -88,7 +88,7 @@ public class CacheCommand {
             return;
         }
 
-        HealerConfig config = ConfigLoader.load();
+        HealerConfig config = new ConfigLoader().load();
         HealCache cache = new HealCache(config.getCache());
 
         // Would load successful heals from reports and add to cache
@@ -104,7 +104,7 @@ public class CacheCommand {
      * Export cache to file.
      */
     public void export(String outputPath) throws IOException {
-        HealerConfig config = ConfigLoader.load();
+        HealerConfig config = new ConfigLoader().load();
         CacheConfig cacheConfig = config.getCache();
 
         if (cacheConfig == null) {
@@ -131,7 +131,7 @@ public class CacheCommand {
             return;
         }
 
-        HealerConfig config = ConfigLoader.load();
+        HealerConfig config = new ConfigLoader().load();
         CacheConfig cacheConfig = config.getCache();
 
         if (cacheConfig == null) {

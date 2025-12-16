@@ -10,6 +10,7 @@ import com.intenthealer.core.model.*;
 import com.intenthealer.llm.LlmProvider;
 import com.intenthealer.llm.PromptBuilder;
 import com.intenthealer.llm.ResponseParser;
+import com.intenthealer.llm.util.SecurityUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -83,16 +84,13 @@ public class BedrockProvider implements LlmProvider {
             BedrockResponse response = invokeModel(systemPrompt, prompt, config);
 
             HealDecision decision = responseParser.parseHealDecision(response.content);
-            decision.setLlmLatencyMs(System.currentTimeMillis() - startTime);
-            decision.setPromptTokens(response.inputTokens);
-            decision.setCompletionTokens(response.outputTokens);
-            decision.setLlmCostUsd(calculateCost(response.inputTokens, response.outputTokens, getModel(config)));
+            logger.debug("Bedrock response: latency={}ms, tokens={}/{}",
+                    System.currentTimeMillis() - startTime, response.inputTokens, response.outputTokens);
 
             return decision;
 
         } catch (Exception e) {
-            throw new LlmException("Bedrock error: " + e.getMessage(),
-                    getProviderName(), getModel(config), e);
+            throw LlmException.connectionError(getProviderName(), SecurityUtils.sanitizeErrorMessage(e.getMessage()));
         }
     }
 
@@ -112,8 +110,7 @@ public class BedrockProvider implements LlmProvider {
             return responseParser.parseOutcomeResult(response.content);
 
         } catch (Exception e) {
-            throw new LlmException("Bedrock error: " + e.getMessage(),
-                    getProviderName(), getModel(config), e);
+            throw LlmException.connectionError(getProviderName(), SecurityUtils.sanitizeErrorMessage(e.getMessage()));
         }
     }
 
@@ -198,8 +195,8 @@ public class BedrockProvider implements LlmProvider {
         HttpResponse<String> httpResponse = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
         if (httpResponse.statusCode() != 200) {
-            logger.error("Bedrock API error: {} - {}", httpResponse.statusCode(), httpResponse.body());
-            throw new LlmException("Bedrock API error: " + httpResponse.statusCode(),
+            logger.error("Bedrock API error: {} - {}", httpResponse.statusCode(), SecurityUtils.sanitizeErrorMessage(httpResponse.body()));
+            throw new LlmException(SecurityUtils.sanitizeErrorMessage("Bedrock API error: " + httpResponse.statusCode()),
                     getProviderName(), modelId);
         }
 

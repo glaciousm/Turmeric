@@ -20,6 +20,13 @@ public class ResponseParser {
     private static final Logger logger = LoggerFactory.getLogger(ResponseParser.class);
 
     /**
+     * Parse a heal decision from LLM response (no provider/model info).
+     */
+    public HealDecision parseHealDecision(String response) {
+        return parseHealDecision(response, "unknown", "unknown");
+    }
+
+    /**
      * Parse a heal decision from LLM response.
      */
     public HealDecision parseHealDecision(String response, String provider, String model) {
@@ -90,6 +97,13 @@ public class ResponseParser {
         }
 
         return builder.build();
+    }
+
+    /**
+     * Parse an outcome result from LLM response (no provider/model info).
+     */
+    public OutcomeResult parseOutcomeResult(String response) {
+        return parseOutcomeResult(response, "unknown", "unknown");
     }
 
     /**

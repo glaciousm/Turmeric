@@ -10,6 +10,7 @@ import com.intenthealer.core.model.*;
 import com.intenthealer.llm.LlmProvider;
 import com.intenthealer.llm.PromptBuilder;
 import com.intenthealer.llm.ResponseParser;
+import com.intenthealer.llm.util.SecurityUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -72,19 +73,16 @@ public class AzureOpenAiProvider implements LlmProvider {
             AzureResponse response = callAzure(systemPrompt, prompt, config);
 
             HealDecision decision = responseParser.parseHealDecision(response.content);
-            decision.setLlmLatencyMs(System.currentTimeMillis() - startTime);
-            decision.setPromptTokens(response.promptTokens);
-            decision.setCompletionTokens(response.completionTokens);
-            decision.setLlmCostUsd(calculateCost(response.promptTokens, response.completionTokens, config));
+            logger.debug("Azure OpenAI response: latency={}ms, tokens={}/{}",
+                    System.currentTimeMillis() - startTime, response.promptTokens, response.completionTokens);
 
             return decision;
 
         } catch (IOException e) {
-            throw new LlmException("Azure OpenAI connection error: " + e.getMessage(),
-                    getProviderName(), getDeployment(config), e);
+            throw LlmException.connectionError(getProviderName(), SecurityUtils.sanitizeErrorMessage(e.getMessage()));
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new LlmException("Request interrupted", getProviderName(), getDeployment(config), e);
+            throw LlmException.connectionError(getProviderName(), "Request interrupted");
         }
     }
 
@@ -104,11 +102,10 @@ public class AzureOpenAiProvider implements LlmProvider {
             return responseParser.parseOutcomeResult(response.content);
 
         } catch (IOException e) {
-            throw new LlmException("Azure OpenAI connection error: " + e.getMessage(),
-                    getProviderName(), getDeployment(config), e);
+            throw LlmException.connectionError(getProviderName(), SecurityUtils.sanitizeErrorMessage(e.getMessage()));
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new LlmException("Request interrupted", getProviderName(), getDeployment(config), e);
+            throw LlmException.connectionError(getProviderName(), "Request interrupted");
         }
     }
 
@@ -160,8 +157,8 @@ public class AzureOpenAiProvider implements LlmProvider {
         HttpResponse<String> httpResponse = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
         if (httpResponse.statusCode() != 200) {
-            logger.error("Azure OpenAI API error: {} - {}", httpResponse.statusCode(), httpResponse.body());
-            throw new LlmException("Azure OpenAI API error: " + httpResponse.statusCode(),
+            logger.error("Azure OpenAI API error: {} - {}", httpResponse.statusCode(), SecurityUtils.sanitizeErrorMessage(httpResponse.body()));
+            throw new LlmException(SecurityUtils.sanitizeErrorMessage("Azure OpenAI API error: " + httpResponse.statusCode()),
                     getProviderName(), deployment);
         }
 

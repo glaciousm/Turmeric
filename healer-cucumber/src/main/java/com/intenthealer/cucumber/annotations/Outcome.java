@@ -16,12 +16,18 @@ import java.lang.annotation.Target;
 public @interface Outcome {
 
     /**
+     * Simple text description for LLM-based validation.
+     * This is the value attribute for shorthand @Outcome("description") syntax.
+     */
+    String value() default "";
+
+    /**
      * Outcome check classes to run after action.
      */
     Class<? extends OutcomeCheck>[] checks() default {};
 
     /**
-     * Simple text description for LLM-based validation.
+     * Description for LLM-based validation (alternative to value).
      * If provided, the LLM will be asked to validate this outcome.
      */
     String description() default "";

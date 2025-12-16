@@ -2,7 +2,6 @@ package com.intenthealer.core.engine.patch;
 
 import com.intenthealer.core.model.ElementCandidate;
 import com.intenthealer.core.model.HealDecision;
-import com.intenthealer.report.model.HealEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,12 +26,12 @@ public class LocatorPatchGenerator {
     /**
      * Generate a patch suggestion from a heal decision.
      */
-    public LocatorPatch generatePatch(HealDecision decision, String sourceFile, int lineNumber) {
-        if (decision == null || !decision.isShouldHeal()) {
+    public LocatorPatch generatePatch(HealDecision decision, ElementCandidate chosen,
+                                       String originalLocator, String sourceFile, int lineNumber) {
+        if (decision == null || !decision.canHeal()) {
             return null;
         }
 
-        ElementCandidate chosen = decision.getChosenCandidate();
         if (chosen == null) {
             return null;
         }
@@ -41,7 +40,7 @@ public class LocatorPatchGenerator {
         patch.setTimestamp(Instant.now());
         patch.setSourceFile(sourceFile);
         patch.setLineNumber(lineNumber);
-        patch.setOriginalLocator(decision.getOriginalLocator());
+        patch.setOriginalLocator(originalLocator);
         patch.setNewLocator(chosen.getLocator());
         patch.setConfidence(chosen.getConfidence());
         patch.setReason(decision.getReasoning());
@@ -52,20 +51,21 @@ public class LocatorPatchGenerator {
     }
 
     /**
-     * Generate patch from a heal event.
+     * Generate patch from heal event data.
      */
-    public LocatorPatch generatePatch(HealEvent event) {
-        if (event == null || event.getHealedLocator() == null) {
+    public LocatorPatch generatePatch(String originalLocator, String healedLocator,
+                                       double confidence, String reasoning, Instant timestamp) {
+        if (healedLocator == null) {
             return null;
         }
 
         LocatorPatch patch = new LocatorPatch();
-        patch.setTimestamp(event.getTimestamp());
-        patch.setOriginalLocator(event.getOriginalLocator());
-        patch.setNewLocator(event.getHealedLocator());
-        patch.setConfidence(event.getConfidence());
-        patch.setReason(event.getReasoning());
-        patch.setLocatorType(inferLocatorType(event.getHealedLocator()));
+        patch.setTimestamp(timestamp != null ? timestamp : Instant.now());
+        patch.setOriginalLocator(originalLocator);
+        patch.setNewLocator(healedLocator);
+        patch.setConfidence(confidence);
+        patch.setReason(reasoning);
+        patch.setLocatorType(inferLocatorType(healedLocator));
 
         patches.add(patch);
         return patch;

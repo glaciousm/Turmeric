@@ -19,6 +19,13 @@
         </license>
     </licenses>
 
+    <repositories>
+        <repository>
+            <id>intellij-releases</id>
+            <url>https://www.jetbrains.com/intellij-repository/releases</url>
+        </repository>
+    </repositories>
+
     <dependencies>
         <dependency>
             <groupId>com.intenthealer</groupId>
@@ -33,5 +40,70 @@
             <groupId>com.fasterxml.jackson.datatype</groupId>
             <artifactId>jackson-datatype-jsr310</artifactId>
         </dependency>
+
+        <!-- IntelliJ Platform SDK - using individual artifacts -->
+        <dependency>
+            <groupId>com.jetbrains.intellij.platform</groupId>
+            <artifactId>util</artifactId>
+            <version>232.10227.8</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.jetbrains.intellij.platform</groupId>
+            <artifactId>util-ui</artifactId>
+            <version>232.10227.8</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.jetbrains.intellij.platform</groupId>
+            <artifactId>core</artifactId>
+            <version>232.10227.8</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.jetbrains.intellij.platform</groupId>
+            <artifactId>core-ui</artifactId>
+            <version>232.10227.8</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.jetbrains.intellij.platform</groupId>
+            <artifactId>editor</artifactId>
+            <version>232.10227.8</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.jetbrains.intellij.platform</groupId>
+            <artifactId>project-model</artifactId>
+            <version>232.10227.8</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.jetbrains.intellij.platform</groupId>
+            <artifactId>lang</artifactId>
+            <version>232.10227.8</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.jetbrains.intellij.java</groupId>
+            <artifactId>java-psi</artifactId>
+            <version>232.10227.8</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.jetbrains</groupId>
+            <artifactId>annotations</artifactId>
+            <version>24.1.0</version>
+            <scope>provided</scope>
+        </dependency>
     </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
 </project>

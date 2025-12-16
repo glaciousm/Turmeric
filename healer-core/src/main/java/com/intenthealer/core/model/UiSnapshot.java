@@ -68,6 +68,14 @@ public final class UiSnapshot {
     }
 
     /**
+     * Gets the HTML/DOM snapshot.
+     * Alias for getDomSnapshot() that returns String (null if not present).
+     */
+    public String getHtml() {
+        return domSnapshot;
+    }
+
+    /**
      * Gets an element by its index.
      */
     public Optional<ElementSnapshot> getElement(int index) {

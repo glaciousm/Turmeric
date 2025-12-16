@@ -72,14 +72,20 @@ public class IntentExtractor {
         IntentContract.Builder builder = IntentContract.builder()
                 .action(intent.action())
                 .description(intent.description())
-                .policy(intent.healPolicy())
+                .policy(intent.policy())
                 .destructive(intent.destructive());
 
         // Extract outcome check
         Outcome outcome = method.getAnnotation(Outcome.class);
         if (outcome != null) {
-            builder.outcomeCheck(outcome.check())
-                   .outcomeDescription(outcome.description());
+            if (outcome.checks().length > 0) {
+                builder.outcomeCheck(outcome.checks()[0]);
+            }
+            // Use value() if provided, otherwise description()
+            String outcomeDesc = !outcome.value().isEmpty() ? outcome.value() : outcome.description();
+            if (!outcomeDesc.isEmpty()) {
+                builder.outcomeDescription(outcomeDesc);
+            }
         }
 
         // Extract invariants
@@ -89,14 +95,14 @@ public class IntentExtractor {
         Invariants invariants = method.getAnnotation(Invariants.class);
         if (invariants != null) {
             for (Invariant inv : invariants.value()) {
-                invariantChecks.add(inv.check());
+                invariantChecks.add(inv.value());
             }
         }
 
         // Check for single @Invariant
         Invariant singleInvariant = method.getAnnotation(Invariant.class);
         if (singleInvariant != null) {
-            invariantChecks.add(singleInvariant.check());
+            invariantChecks.add(singleInvariant.value());
         }
 
         if (!invariantChecks.isEmpty()) {

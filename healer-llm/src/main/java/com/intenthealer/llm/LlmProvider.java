@@ -45,7 +45,38 @@ public interface LlmProvider {
     String getProviderName();
 
     /**
+     * Alias for getProviderName() for compatibility.
+     */
+    default String getName() {
+        return getProviderName();
+    }
+
+    /**
      * Check if the provider is available and properly configured.
      */
     boolean isAvailable();
+
+    /**
+     * Complete a request using the LLM.
+     * Default implementation throws UnsupportedOperationException.
+     */
+    default LlmResponse complete(LlmRequest request) {
+        throw new UnsupportedOperationException("Raw completion not supported by this provider");
+    }
+
+    /**
+     * Get the maximum tokens supported by this provider.
+     * Default returns 4000.
+     */
+    default int getMaxTokens() {
+        return 4000;
+    }
+
+    /**
+     * Get the cost per token for this provider.
+     * Default returns 0 (no cost tracking).
+     */
+    default double getCostPerToken() {
+        return 0.0;
+    }
 }

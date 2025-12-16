@@ -80,8 +80,25 @@ public class LlmConfig {
         return baseUrl;
     }
 
+    /**
+     * Alias for getBaseUrl() for compatibility.
+     */
+    public String getEndpoint() {
+        return baseUrl;
+    }
+
     public void setBaseUrl(String baseUrl) {
         this.baseUrl = baseUrl;
+    }
+
+    /**
+     * Resolve the actual API key from the configured environment variable.
+     */
+    public String getApiKey() {
+        if (apiKeyEnv == null || apiKeyEnv.isEmpty()) {
+            return null;
+        }
+        return System.getenv(apiKeyEnv);
     }
 
     public int getTimeoutSeconds() {

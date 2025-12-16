@@ -30,6 +30,18 @@ public class HealReport {
     @JsonProperty("events")
     private List<HealEvent> events = new ArrayList<>();
 
+    @JsonProperty("test_name")
+    private String testName;
+
+    @JsonProperty("test_status")
+    private String testStatus;
+
+    @JsonProperty("start_time")
+    private Instant startTime;
+
+    @JsonProperty("end_time")
+    private Instant endTime;
+
     public String getRunId() { return runId; }
     public void setRunId(String runId) { this.runId = runId; }
 
@@ -52,6 +64,18 @@ public class HealReport {
         events.add(event);
         summary.updateFromEvent(event);
     }
+
+    public String getTestName() { return testName; }
+    public void setTestName(String testName) { this.testName = testName; }
+
+    public String getTestStatus() { return testStatus; }
+    public void setTestStatus(String testStatus) { this.testStatus = testStatus; }
+
+    public Instant getStartTime() { return startTime; }
+    public void setStartTime(Instant startTime) { this.startTime = startTime; }
+
+    public Instant getEndTime() { return endTime; }
+    public void setEndTime(Instant endTime) { this.endTime = endTime; }
 
     /**
      * Configuration summary included in report.

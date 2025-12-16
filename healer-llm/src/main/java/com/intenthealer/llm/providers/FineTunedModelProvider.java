@@ -5,6 +5,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.intenthealer.llm.LlmProvider;
 import com.intenthealer.llm.LlmRequest;
 import com.intenthealer.llm.LlmResponse;
+import com.intenthealer.llm.PromptBuilder;
+import com.intenthealer.llm.ResponseParser;
+import com.intenthealer.llm.util.SecurityUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -110,11 +113,89 @@ public class FineTunedModelProvider implements LlmProvider {
     }
 
     @Override
+    public String getProviderName() {
+        return getName();
+    }
+
+    @Override
+    public com.intenthealer.core.model.HealDecision evaluateCandidates(
+            com.intenthealer.core.model.FailureContext failure,
+            com.intenthealer.core.model.UiSnapshot snapshot,
+            com.intenthealer.core.model.IntentContract intent,
+            com.intenthealer.core.config.LlmConfig config) {
+        // Create a PromptBuilder instance
+        PromptBuilder promptBuilder = new PromptBuilder();
+
+        // Build a healing prompt
+        String prompt = promptBuilder.buildHealingPrompt(failure, snapshot, intent);
+
+        // Create an LlmRequest with the prompt
+        LlmRequest request = LlmRequest.builder()
+                .prompt(prompt)
+                .systemMessage(promptBuilder.buildSystemPrompt())
+                .maxTokens(this.config.maxTokens())
+                .temperature(0.0)
+                .build();
+
+        // Call this.complete(request) which uses the adapter
+        LlmResponse response = this.complete(request);
+
+        // Parse the response using ResponseParser to get a HealDecision
+        if (!response.isSuccess()) {
+            String errorMsg = response.getErrorMessage().orElse("Unknown error");
+            logger.warn("Fine-tuned model completion failed: {}", SecurityUtils.sanitizeErrorMessage(errorMsg));
+            return com.intenthealer.core.model.HealDecision.builder()
+                    .canHeal(false)
+                    .confidence(0.0)
+                    .refusalReason("LLM request failed: " + SecurityUtils.sanitizeErrorMessage(errorMsg))
+                    .build();
+        }
+
+        ResponseParser responseParser = new ResponseParser();
+        return responseParser.parseHealDecision(response.getContent().orElse(""), getName(), this.config.modelId());
+    }
+
+    @Override
+    public com.intenthealer.core.model.OutcomeResult validateOutcome(
+            String expectedOutcome,
+            com.intenthealer.core.model.UiSnapshot before,
+            com.intenthealer.core.model.UiSnapshot after,
+            com.intenthealer.core.config.LlmConfig config) {
+        // Create a PromptBuilder instance
+        PromptBuilder promptBuilder = new PromptBuilder();
+
+        // Build an outcome validation prompt
+        String prompt = promptBuilder.buildOutcomeValidationPrompt(expectedOutcome, before, after);
+
+        // Create an LlmRequest with the prompt
+        LlmRequest request = LlmRequest.builder()
+                .prompt(prompt)
+                .systemMessage(promptBuilder.buildSystemPrompt())
+                .maxTokens(this.config.maxTokens())
+                .temperature(0.0)
+                .build();
+
+        // Call this.complete(request)
+        LlmResponse response = this.complete(request);
+
+        // Parse the response to create an OutcomeResult
+        if (!response.isSuccess()) {
+            String errorMsg = response.getErrorMessage().orElse("Unknown error");
+            logger.warn("Fine-tuned model outcome validation failed: {}", SecurityUtils.sanitizeErrorMessage(errorMsg));
+            return com.intenthealer.core.model.OutcomeResult.failed(
+                    "LLM request failed: " + SecurityUtils.sanitizeErrorMessage(errorMsg));
+        }
+
+        ResponseParser responseParser = new ResponseParser();
+        return responseParser.parseOutcomeResult(response.getContent().orElse(""), getName(), this.config.modelId());
+    }
+
+    @Override
     public boolean isAvailable() {
         try {
             return adapter.healthCheck();
         } catch (Exception e) {
-            logger.warn("Fine-tuned model health check failed: {}", e.getMessage());
+            logger.warn("Fine-tuned model health check failed: {}", SecurityUtils.sanitizeErrorMessage(e.getMessage()));
             return false;
         }
     }
@@ -127,7 +208,7 @@ public class FineTunedModelProvider implements LlmProvider {
             logger.error("Fine-tuned model completion failed", e);
             return LlmResponse.builder()
                     .success(false)
-                    .errorMessage("Fine-tuned model error: " + e.getMessage())
+                    .errorMessage(SecurityUtils.sanitizeErrorMessage("Fine-tuned model error: " + e.getMessage()))
                     .build();
         }
     }
@@ -210,7 +291,7 @@ public class FineTunedModelProvider implements LlmProvider {
             if (response.statusCode() != 200) {
                 return LlmResponse.builder()
                         .success(false)
-                        .errorMessage("OpenAI API error: " + response.statusCode())
+                        .errorMessage(SecurityUtils.sanitizeErrorMessage("OpenAI API error: " + response.statusCode()))
                         .build();
             }
 
@@ -281,7 +362,7 @@ public class FineTunedModelProvider implements LlmProvider {
             if (response.statusCode() != 200) {
                 return LlmResponse.builder()
                         .success(false)
-                        .errorMessage("HuggingFace API error: " + response.statusCode())
+                        .errorMessage(SecurityUtils.sanitizeErrorMessage("HuggingFace API error: " + response.statusCode()))
                         .build();
             }
 
@@ -346,7 +427,7 @@ public class FineTunedModelProvider implements LlmProvider {
                     HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
                     return response.statusCode() == 200;
                 } catch (Exception e) {
-                    log.debug("Health check failed for endpoint {}: {}", config.endpointUrl(), e.getMessage());
+                    log.debug("Health check failed for endpoint {}: {}", config.endpointUrl(), SecurityUtils.sanitizeErrorMessage(e.getMessage()));
                     return false;
                 }
             }
@@ -407,7 +488,7 @@ public class FineTunedModelProvider implements LlmProvider {
             if (response.statusCode() != 200) {
                 return LlmResponse.builder()
                         .success(false)
-                        .errorMessage("TGI server error: " + response.statusCode() + " - " + response.body())
+                        .errorMessage(SecurityUtils.sanitizeErrorMessage("TGI server error: " + response.statusCode() + " - " + response.body()))
                         .build();
             }
 
@@ -482,7 +563,7 @@ public class FineTunedModelProvider implements LlmProvider {
             if (response.statusCode() != 200) {
                 return LlmResponse.builder()
                         .success(false)
-                        .errorMessage("Custom endpoint error: " + response.statusCode())
+                        .errorMessage(SecurityUtils.sanitizeErrorMessage("Custom endpoint error: " + response.statusCode()))
                         .build();
             }
 
@@ -554,7 +635,7 @@ public class FineTunedModelProvider implements LlmProvider {
             if (config.modelPath() == null || !Files.exists(Path.of(config.modelPath()))) {
                 return LlmResponse.builder()
                         .success(false)
-                        .errorMessage("ONNX model file not found: " + config.modelPath())
+                        .errorMessage(SecurityUtils.sanitizeErrorMessage("ONNX model file not found: " + config.modelPath()))
                         .build();
             }
 

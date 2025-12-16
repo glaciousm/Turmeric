@@ -70,6 +70,32 @@ public class HealEvent {
     public CostInfo getCost() { return cost; }
     public void setCost(CostInfo cost) { this.cost = cost; }
 
+    // Convenience methods for WeeklyHealthReportGenerator
+    public String getOutcome() {
+        return result != null ? result.getStatus() : null;
+    }
+
+    public Double getLlmCostUsd() {
+        return cost != null ? cost.getCostUsd() : null;
+    }
+
+    public Double getLlmLatencyMs() {
+        // Not tracked in current model, return null
+        return null;
+    }
+
+    public String getOriginalLocator() {
+        return failure != null ? failure.getOriginalLocator() : null;
+    }
+
+    public String getStepText() {
+        return step;
+    }
+
+    public String getHealedLocator() {
+        return result != null ? result.getHealedLocator() : null;
+    }
+
     /**
      * Information about the original failure.
      */

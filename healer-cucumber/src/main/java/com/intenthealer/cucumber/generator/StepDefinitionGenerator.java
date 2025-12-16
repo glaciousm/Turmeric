@@ -310,10 +310,18 @@ public class StepDefinitionGenerator {
         if (text.contains("navigate") || text.contains("go to") || text.contains("open")) {
             body.append("        // Navigate to URL\n");
             if (step.parameters().isEmpty()) {
-                body.append("        // TODO: Add URL\n");
+                body.append("        // TODO: Add URL parameter to step definition\n");
                 body.append("        driver.get(\"https://example.com\");\n");
             } else {
-                body.append("        driver.get(").append(step.parameters().get(0).name()).append(");\n");
+                // Check if the parameter looks like a URL
+                String paramName = step.parameters().get(0).name();
+                String paramValue = step.parameters().get(0).value();
+                if (paramValue != null && (paramValue.startsWith("http://") || paramValue.startsWith("https://") ||
+                    paramValue.contains("www.") || paramName.toLowerCase().contains("url"))) {
+                    body.append("        driver.get(").append(paramName).append(");\n");
+                } else {
+                    body.append("        driver.get(").append(paramName).append(");\n");
+                }
             }
         } else if (text.contains("click")) {
             body.append("        // Click element\n");
@@ -322,8 +330,10 @@ public class StepDefinitionGenerator {
                 body.append("        WebElement element = wait.until(ExpectedConditions.elementToBeClickable(\n");
                 body.append("            By.xpath(\"//*[contains(text(),'\" + ").append(step.parameters().get(0).name()).append(" + \"')]\")));\n");
             } else {
+                // Extract button text from step text using regex
+                String buttonText = extractButtonTextFromStep(step.text());
                 body.append("        WebElement element = wait.until(ExpectedConditions.elementToBeClickable(\n");
-                body.append("            By.xpath(\"//button[contains(text(),'TODO')]\")));\n");
+                body.append("            By.xpath(\"//button[contains(text(),'").append(buttonText).append("')]\")));\n");
             }
             body.append("        element.click();\n");
         } else if (text.contains("enter") || text.contains("type") || text.contains("fill") || text.contains("input")) {
@@ -340,7 +350,13 @@ public class StepDefinitionGenerator {
                 body.append("        field.clear();\n");
                 body.append("        field.sendKeys(").append(step.parameters().get(0).name()).append(");\n");
             } else {
-                body.append("        // TODO: Add locator and value\n");
+                // Generate a more intelligent default based on step text
+                String fieldHint = extractFieldHintFromStep(step.text());
+                body.append("        // TODO: Add appropriate locator for '").append(fieldHint).append("' field\n");
+                body.append("        WebElement field = wait.until(ExpectedConditions.visibilityOfElementLocated(\n");
+                body.append("            By.xpath(\"//input[@type='text']\")));\n");
+                body.append("        field.clear();\n");
+                body.append("        field.sendKeys(\"test value\");\n");
             }
         } else if (text.contains("see") || text.contains("displayed") || text.contains("visible") || text.contains("should")) {
             body.append("        // Verify element visibility\n");
@@ -350,16 +366,59 @@ public class StepDefinitionGenerator {
                 body.append("            By.xpath(\"//*[contains(text(),'\" + ").append(step.parameters().get(0).name()).append(" + \"')]\")));\n");
                 body.append("        assertThat(element.isDisplayed()).isTrue();\n");
             } else {
-                body.append("        // TODO: Add assertion\n");
+                // Generate a default assertion using step text
+                String assertionHint = extractAssertionHintFromStep(step.text());
+                body.append("        // Verify: ").append(assertionHint).append("\n");
+                body.append("        WebElement element = wait.until(ExpectedConditions.visibilityOfElementLocated(\n");
+                body.append("            By.xpath(\"//*[contains(text(),'").append(escapeString(assertionHint)).append("')]\")));\n");
+                body.append("        assertThat(element.isDisplayed()).isTrue();\n");
             }
         } else if (text.contains("select") || text.contains("choose")) {
             body.append("        // Select from dropdown\n");
             body.append("        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));\n");
-            body.append("        // TODO: Implement select logic\n");
+            if (step.parameters().size() >= 2) {
+                // First param is option, second is dropdown identifier
+                body.append("        WebElement dropdown = wait.until(ExpectedConditions.elementToBeClickable(\n");
+                body.append("            By.xpath(\"//select[contains(@name,'\" + ").append(step.parameters().get(1).name()).append(" + \"')]\")));\n");
+                body.append("        org.openqa.selenium.support.ui.Select select = new org.openqa.selenium.support.ui.Select(dropdown);\n");
+                body.append("        select.selectByVisibleText(").append(step.parameters().get(0).name()).append(");\n");
+            } else if (step.parameters().size() == 1) {
+                body.append("        WebElement dropdown = wait.until(ExpectedConditions.elementToBeClickable(\n");
+                body.append("            By.xpath(\"//select\")));\n");
+                body.append("        org.openqa.selenium.support.ui.Select select = new org.openqa.selenium.support.ui.Select(dropdown);\n");
+                body.append("        select.selectByVisibleText(").append(step.parameters().get(0).name()).append(");\n");
+            } else {
+                body.append("        // TODO: Add dropdown locator and option\n");
+                body.append("        throw new io.cucumber.java.PendingException();\n");
+            }
         } else if (text.contains("wait")) {
             body.append("        // Wait for condition\n");
             body.append("        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));\n");
-            body.append("        // TODO: Implement wait condition\n");
+            if (!step.parameters().isEmpty()) {
+                // Try to determine what to wait for based on step text
+                if (text.contains("visible") || text.contains("appear")) {
+                    body.append("        wait.until(ExpectedConditions.visibilityOfElementLocated(\n");
+                    body.append("            By.xpath(\"//*[contains(text(),'\" + ").append(step.parameters().get(0).name()).append(" + \"')]\")));\n");
+                } else if (text.contains("clickable")) {
+                    body.append("        wait.until(ExpectedConditions.elementToBeClickable(\n");
+                    body.append("            By.xpath(\"//*[contains(text(),'\" + ").append(step.parameters().get(0).name()).append(" + \"')]\")));\n");
+                } else if (text.contains("disappear") || text.contains("invisible")) {
+                    body.append("        wait.until(ExpectedConditions.invisibilityOfElementLocated(\n");
+                    body.append("            By.xpath(\"//*[contains(text(),'\" + ").append(step.parameters().get(0).name()).append(" + \"')]\")));\n");
+                } else {
+                    body.append("        wait.until(ExpectedConditions.presenceOfElementLocated(\n");
+                    body.append("            By.xpath(\"//*[contains(text(),'\" + ").append(step.parameters().get(0).name()).append(" + \"')]\")));\n");
+                }
+            } else {
+                // Extract time if present, otherwise use generic wait
+                Integer waitSeconds = extractWaitTimeFromStep(step.text());
+                if (waitSeconds != null) {
+                    body.append("        Thread.sleep(").append(waitSeconds * 1000).append(");\n");
+                } else {
+                    body.append("        // TODO: Specify what condition to wait for\n");
+                    body.append("        Thread.sleep(2000);\n");
+                }
+            }
         } else {
             body.append("        // TODO: Implement step logic\n");
             body.append("        throw new io.cucumber.java.PendingException();\n");
@@ -460,6 +519,66 @@ public class StepDefinitionGenerator {
         return text.replace("\\", "\\\\")
                 .replace("\"", "\\\"")
                 .replace("\n", "\\n");
+    }
+
+    private String extractButtonTextFromStep(String stepText) {
+        // Try to extract text that looks like a button label
+        // Look for common patterns like "click the X button", "click X", etc.
+        String lower = stepText.toLowerCase();
+
+        // Remove common prefixes
+        String cleaned = lower
+                .replaceFirst("^i\\s+", "")
+                .replaceFirst("^click\\s+(?:the\\s+)?", "")
+                .replaceFirst("^on\\s+(?:the\\s+)?", "")
+                .replaceFirst("button$", "")
+                .trim();
+
+        if (!cleaned.isEmpty()) {
+            return cleaned.substring(0, 1).toUpperCase() + cleaned.substring(1);
+        }
+        return "Submit";
+    }
+
+    private String extractFieldHintFromStep(String stepText) {
+        // Extract a hint about what field we're interacting with
+        String lower = stepText.toLowerCase();
+
+        // Look for common field indicators
+        if (lower.contains("username") || lower.contains("user name")) return "username";
+        if (lower.contains("password") || lower.contains("passwd")) return "password";
+        if (lower.contains("email")) return "email";
+        if (lower.contains("search")) return "search";
+        if (lower.contains("name")) return "name";
+
+        // Generic fallback
+        return "input field";
+    }
+
+    private String extractAssertionHintFromStep(String stepText) {
+        // Extract what we should be asserting
+        String cleaned = stepText
+                .replaceFirst("(?i)^i\\s+should\\s+", "")
+                .replaceFirst("(?i)^i\\s+", "")
+                .replaceFirst("(?i)^see\\s+", "")
+                .replaceFirst("(?i)^the\\s+", "")
+                .trim();
+
+        if (!cleaned.isEmpty()) {
+            return cleaned;
+        }
+        return "expected content";
+    }
+
+    private Integer extractWaitTimeFromStep(String stepText) {
+        // Try to extract a number of seconds from the step text
+        Pattern timePattern = Pattern.compile("(\\d+)\\s*(?:second|sec)s?", Pattern.CASE_INSENSITIVE);
+        Matcher matcher = timePattern.matcher(stepText);
+
+        if (matcher.find()) {
+            return Integer.parseInt(matcher.group(1));
+        }
+        return null;
     }
 
     // Records

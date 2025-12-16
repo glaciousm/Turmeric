@@ -70,7 +70,7 @@ public class CacheKey {
             MessageDigest md = MessageDigest.getInstance("SHA-256");
             String content = String.join("|",
                     pageUrlPattern != null ? pageUrlPattern : "",
-                    originalLocator != null ? originalLocator.getStrategy() : "",
+                    originalLocator != null ? originalLocator.getStrategy().name() : "",
                     originalLocator != null ? originalLocator.getValue() : "",
                     actionType != null ? actionType.name() : "",
                     intentHint != null ? intentHint : ""

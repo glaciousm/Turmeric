@@ -10,13 +10,13 @@ import com.intenthealer.core.model.*;
 import com.intenthealer.llm.LlmProvider;
 import com.intenthealer.llm.PromptBuilder;
 import com.intenthealer.llm.ResponseParser;
+import com.intenthealer.llm.util.HttpClientFactory;
+import com.intenthealer.llm.util.SecurityUtils;
 import okhttp3.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.time.Duration;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Anthropic Claude LLM provider implementation.
@@ -31,15 +31,6 @@ public class AnthropicProvider implements LlmProvider {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final PromptBuilder promptBuilder = new PromptBuilder();
     private final ResponseParser responseParser = new ResponseParser();
-    private OkHttpClient client;
-
-    public AnthropicProvider() {
-        this.client = new OkHttpClient.Builder()
-                .connectTimeout(30, TimeUnit.SECONDS)
-                .readTimeout(60, TimeUnit.SECONDS)
-                .writeTimeout(30, TimeUnit.SECONDS)
-                .build();
-    }
 
     @Override
     public HealDecision evaluateCandidates(
@@ -107,16 +98,15 @@ public class AnthropicProvider implements LlmProvider {
         int maxRetries = config.getMaxRetries();
         Exception lastException = null;
 
+        // Get a cached client with the configured timeout
+        OkHttpClient client = HttpClientFactory.getClientWithReadTimeout(config.getTimeoutSeconds());
+
         while (retries <= maxRetries) {
             try {
-                client = client.newBuilder()
-                        .readTimeout(Duration.ofSeconds(config.getTimeoutSeconds()))
-                        .build();
-
                 try (Response response = client.newCall(request).execute()) {
                     if (!response.isSuccessful()) {
                         String errorBody = response.body() != null ? response.body().string() : "unknown";
-                        throw new LlmException("Anthropic API error: " + response.code() + " - " + errorBody,
+                        throw new LlmException(SecurityUtils.sanitizeErrorMessage("Anthropic API error: " + response.code() + " - " + errorBody),
                                 getProviderName(), config.getModel());
                     }
 
@@ -127,7 +117,7 @@ public class AnthropicProvider implements LlmProvider {
                 lastException = e;
                 retries++;
                 if (retries <= maxRetries) {
-                    logger.warn("Anthropic request failed, retrying ({}/{}): {}", retries, maxRetries, e.getMessage());
+                    logger.warn("Anthropic request failed, retrying ({}/{}): {}", retries, maxRetries, SecurityUtils.sanitizeErrorMessage(e.getMessage()));
                     try {
                         Thread.sleep(1000L * retries);  // Exponential backoff
                     } catch (InterruptedException ie) {

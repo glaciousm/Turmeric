@@ -99,9 +99,9 @@ public class HealBlacklist {
     public boolean isBlacklisted(String pageUrl, LocatorInfo original, LocatorInfo healed) {
         cleanup(); // Remove expired entries
 
-        String origStrategy = original != null ? original.getStrategy() : null;
+        String origStrategy = original != null ? original.getStrategy().name() : null;
         String origValue = original != null ? original.getValue() : null;
-        String healedStrategy = healed != null ? healed.getStrategy() : null;
+        String healedStrategy = healed != null ? healed.getStrategy().name() : null;
         String healedValue = healed != null ? healed.getValue() : null;
 
         for (BlacklistEntry entry : entries.values()) {
@@ -142,11 +142,11 @@ public class HealBlacklist {
      */
     public BlacklistEntry addLocator(LocatorInfo original, LocatorInfo healed, String reason) {
         BlacklistEntry.Builder builder = BlacklistEntry.builder()
-                .originalLocator(original.getStrategy(), original.getValue())
+                .originalLocator(original.getStrategy().name(), original.getValue())
                 .reason(reason);
 
         if (healed != null) {
-            builder.healedLocator(healed.getStrategy(), healed.getValue());
+            builder.healedLocator(healed.getStrategy().name(), healed.getValue());
         }
 
         return add(builder.build());
@@ -157,7 +157,7 @@ public class HealBlacklist {
      */
     public BlacklistEntry addTemporary(LocatorInfo original, String reason, long ttlSeconds) {
         BlacklistEntry entry = BlacklistEntry.builder()
-                .originalLocator(original.getStrategy(), original.getValue())
+                .originalLocator(original.getStrategy().name(), original.getValue())
                 .reason(reason)
                 .ttlSeconds(ttlSeconds)
                 .build();
@@ -188,7 +188,7 @@ public class HealBlacklist {
         Iterator<Map.Entry<String, BlacklistEntry>> it = entries.entrySet().iterator();
         while (it.hasNext()) {
             BlacklistEntry entry = it.next().getValue();
-            if (Objects.equals(entry.getOriginalLocatorStrategy(), original.getStrategy()) &&
+            if (Objects.equals(entry.getOriginalLocatorStrategy(), original.getStrategy().name()) &&
                 Objects.equals(entry.getOriginalLocatorValue(), original.getValue())) {
                 it.remove();
                 removed++;

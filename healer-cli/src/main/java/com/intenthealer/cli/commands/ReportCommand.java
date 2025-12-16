@@ -163,7 +163,8 @@ public class ReportCommand {
                         truncate(event.getStepText(), 50));
                 System.out.printf("   %s -> %s%n",
                         event.getOriginalLocator(),
-                        event.getHealedLocator() != null ? event.getHealedLocator() : "N/A");
+                        event.getHealedLocator() != null && !event.getHealedLocator().isEmpty()
+                            ? event.getHealedLocator() : "N/A");
                 System.out.println();
 
                 count++;
@@ -177,6 +178,7 @@ public class ReportCommand {
     private List<HealReport> loadReports(Path dirPath) throws IOException {
         return Files.walk(dirPath)
                 .filter(p -> p.toString().endsWith(".json"))
+                .filter(p -> p.getFileName().toString().startsWith("heal"))
                 .map(p -> {
                     try {
                         return reportGenerator.loadReport(p.toString());

@@ -13,6 +13,21 @@ public class PromptBuilder {
     private static final int MAX_TEXT_LENGTH = 100;
 
     /**
+     * Build the system prompt for healing operations.
+     */
+    public String buildSystemPrompt() {
+        return "You are an expert test automation engineer helping to fix broken UI test selectors.";
+    }
+
+    /**
+     * Build the healing prompt from failure context and UI snapshot.
+     * Alias for buildEvaluationPrompt.
+     */
+    public String buildEvaluationPrompt(FailureContext failure, UiSnapshot snapshot, IntentContract intent) {
+        return buildHealingPrompt(failure, snapshot, intent);
+    }
+
+    /**
      * Build the healing prompt from failure context and UI snapshot.
      */
     public String buildHealingPrompt(FailureContext failure, UiSnapshot snapshot, IntentContract intent) {

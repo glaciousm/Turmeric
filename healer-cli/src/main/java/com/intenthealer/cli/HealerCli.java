@@ -100,13 +100,13 @@ public class HealerCli {
     }
 
     private static void handleReportCommand(String[] args) throws Exception {
-        HealerConfig config = ConfigLoader.load();
+        HealerConfig config = new ConfigLoader().load();
         if (reportCmd == null) {
-            reportCmd = new ReportCommand(new ReportGenerator(config.getReports()));
+            reportCmd = new ReportCommand(new ReportGenerator(config.getReport()));
         }
 
         if (args.length == 0) {
-            String dir = config.getReports() != null ? config.getReports().getOutputDir() : "./healer-reports";
+            String dir = config.getReport() != null ? config.getReport().getOutputDir() : "./healer-reports";
             reportCmd.summary(dir);
             return;
         }

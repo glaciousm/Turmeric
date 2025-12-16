@@ -72,6 +72,13 @@ public class SnapshotBuilder {
                 .build();
     }
 
+    /**
+     * Capture a UI snapshot without failure context.
+     */
+    public UiSnapshot captureSnapshot() {
+        return captureAll();
+    }
+
     private List<ElementSnapshot> captureClickableElements() {
         String script = """
             return Array.from(document.querySelectorAll(

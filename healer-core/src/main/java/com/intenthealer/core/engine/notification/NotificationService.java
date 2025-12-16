@@ -11,6 +11,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
@@ -317,19 +318,18 @@ public class NotificationService {
 
         @Override
         public void send(HealNotification notification, HttpClient client, ObjectMapper mapper) throws Exception {
-            Map<String, Object> payload = Map.of(
-                    "type", "heal",
-                    "success", notification.success(),
-                    "timestamp", notification.timestamp().toString(),
-                    "feature", notification.featureName(),
-                    "scenario", notification.scenarioName(),
-                    "step", notification.stepText(),
-                    "originalLocator", notification.originalLocator(),
-                    "healedLocator", notification.healedLocator(),
-                    "confidence", notification.confidence(),
-                    "trustLevel", notification.trustLevel(),
-                    "reasoning", notification.reasoning()
-            );
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("type", "heal");
+            payload.put("success", notification.success());
+            payload.put("timestamp", notification.timestamp().toString());
+            payload.put("feature", notification.featureName());
+            payload.put("scenario", notification.scenarioName());
+            payload.put("step", notification.stepText());
+            payload.put("originalLocator", notification.originalLocator());
+            payload.put("healedLocator", notification.healedLocator());
+            payload.put("confidence", notification.confidence());
+            payload.put("trustLevel", notification.trustLevel());
+            payload.put("reasoning", notification.reasoning());
 
             sendWebhook(client, mapper, payload);
         }

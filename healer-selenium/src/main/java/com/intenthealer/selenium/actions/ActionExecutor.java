@@ -8,6 +8,7 @@ import org.openqa.selenium.*;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.Select;
+import org.openqa.selenium.support.ui.UnexpectedTagNameException;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,7 +63,10 @@ public class ActionExecutor {
         try {
             element.click();
             return;
-        } catch (ElementClickInterceptedException | ElementNotInteractableException e) {
+        } catch (ElementClickInterceptedException e) {
+            lastException = e;
+            logger.debug("Standard click failed, trying scroll: {}", e.getMessage());
+        } catch (ElementNotInteractableException e) {
             lastException = e;
             logger.debug("Standard click failed, trying scroll: {}", e.getMessage());
         }

@@ -3,7 +3,6 @@ package com.intenthealer.testng;
 import com.intenthealer.core.config.ConfigLoader;
 import com.intenthealer.core.config.HealerConfig;
 import com.intenthealer.core.engine.HealingEngine;
-import com.intenthealer.core.model.HealMode;
 import com.intenthealer.report.ReportGenerator;
 import com.intenthealer.report.model.HealReport;
 import com.intenthealer.selenium.driver.HealingWebDriver;
@@ -39,7 +38,7 @@ public class HealerTestListener implements ITestListener, ISuiteListener, IInvok
         logger.info("Initializing Intent Healer for test suite: {}", suite.getName());
 
         try {
-            config = ConfigLoader.load();
+            config = new ConfigLoader().load();
             enabled = config.isEnabled();
 
             if (enabled) {
@@ -65,20 +64,19 @@ public class HealerTestListener implements ITestListener, ISuiteListener, IInvok
             // Generate consolidated report
             if (reportGenerator != null && !testReports.isEmpty()) {
                 HealReport suiteReport = consolidateReports(suite.getName());
-                String reportPath = config.getReports().getOutputDir() + "/suite-" + suite.getName() + "-report";
+                String reportPath = config.getReport().getOutputDir() + "/suite-" + suite.getName() + "-report";
 
-                reportGenerator.generateHtmlReport(suiteReport, reportPath + ".html");
-                reportGenerator.generateJsonReport(suiteReport, reportPath + ".json");
+                // Write reports using the ReportGenerator's current report mechanism
+                reportGenerator.startReport();
+                for (var event : suiteReport.getEvents()) {
+                    reportGenerator.addEvent(event);
+                }
+                reportGenerator.finishReport();
 
                 logger.info("Suite report generated: {}", reportPath);
             }
         } catch (Exception e) {
             logger.error("Failed to generate suite report", e);
-        }
-
-        // Cleanup
-        if (healingEngine != null) {
-            healingEngine.shutdown();
         }
         testReports.clear();
     }
@@ -160,17 +158,14 @@ public class HealerTestListener implements ITestListener, ISuiteListener, IInvok
      * Create a HealingWebDriver wrapper.
      */
     private HealingWebDriver createHealingDriver(WebDriver driver) {
-        HealMode mode = HealMode.valueOf(config.getMode().toUpperCase());
-        return new HealingWebDriver(driver, healingEngine, mode);
+        return new HealingWebDriver(driver, healingEngine, config);
     }
 
     /**
      * Create the healing engine from configuration.
      */
     private HealingEngine createHealingEngine(HealerConfig config) {
-        return HealingEngine.builder()
-                .config(config)
-                .build();
+        return new HealingEngine(config);
     }
 
     /**
@@ -185,10 +180,14 @@ public class HealerTestListener implements ITestListener, ISuiteListener, IInvok
             report.setTestStatus(status);
 
             // Generate individual test report if configured
-            if (config.getReports().isEnabled()) {
+            if (config.getReport().isEnabled()) {
                 try {
-                    String reportPath = config.getReports().getOutputDir() + "/test-" + testId;
-                    reportGenerator.generateJsonReport(report, reportPath + ".json");
+                    String reportPath = config.getReport().getOutputDir() + "/test-" + testId;
+                    reportGenerator.startReport();
+                    for (var event : report.getEvents()) {
+                        reportGenerator.addEvent(event);
+                    }
+                    reportGenerator.finishReport();
                     logger.debug("Test report generated: {}", reportPath);
                 } catch (Exception e) {
                     logger.warn("Failed to generate test report: {}", e.getMessage());

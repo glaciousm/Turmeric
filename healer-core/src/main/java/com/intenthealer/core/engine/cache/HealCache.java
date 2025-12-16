@@ -306,13 +306,13 @@ public class HealCache {
         dto.keyHash = entry.getKey().getHash();
         dto.pageUrlPattern = entry.getKey().getPageUrlPattern();
         dto.originalLocatorStrategy = entry.getKey().getOriginalLocator() != null
-                ? entry.getKey().getOriginalLocator().getStrategy() : null;
+                ? entry.getKey().getOriginalLocator().getStrategy().name() : null;
         dto.originalLocatorValue = entry.getKey().getOriginalLocator() != null
                 ? entry.getKey().getOriginalLocator().getValue() : null;
         dto.actionType = entry.getKey().getActionType() != null
                 ? entry.getKey().getActionType().name() : null;
         dto.intentHint = entry.getKey().getIntentHint();
-        dto.healedLocatorStrategy = entry.getHealedLocator().getStrategy();
+        dto.healedLocatorStrategy = entry.getHealedLocator().getStrategy().name();
         dto.healedLocatorValue = entry.getHealedLocator().getValue();
         dto.confidence = entry.getConfidence();
         dto.reasoning = entry.getReasoning();
@@ -327,7 +327,9 @@ public class HealCache {
     private CacheEntry fromDto(CacheEntryDto dto) {
         LocatorInfo originalLocator = null;
         if (dto.originalLocatorStrategy != null && dto.originalLocatorValue != null) {
-            originalLocator = new LocatorInfo(dto.originalLocatorStrategy, dto.originalLocatorValue);
+            originalLocator = new LocatorInfo(
+                    LocatorInfo.LocatorStrategy.valueOf(dto.originalLocatorStrategy),
+                    dto.originalLocatorValue);
         }
 
         CacheKey key = CacheKey.builder()
@@ -338,7 +340,9 @@ public class HealCache {
                 .intentHint(dto.intentHint)
                 .build();
 
-        LocatorInfo healedLocator = new LocatorInfo(dto.healedLocatorStrategy, dto.healedLocatorValue);
+        LocatorInfo healedLocator = new LocatorInfo(
+                LocatorInfo.LocatorStrategy.valueOf(dto.healedLocatorStrategy),
+                dto.healedLocatorValue);
 
         return CacheEntry.builder()
                 .key(key)

@@ -219,6 +219,30 @@ public final class FailureContext {
             return this;
         }
 
+        public Builder exception(RuntimeException exception) {
+            if (exception != null) {
+                this.exceptionType = exception.getClass().getSimpleName();
+                this.exceptionMessage = exception.getMessage();
+            }
+            return this;
+        }
+
+        public Builder pageUrl(String url) {
+            if (this.additionalContext == null) {
+                this.additionalContext = new java.util.HashMap<>();
+            }
+            this.additionalContext.put("pageUrl", url);
+            return this;
+        }
+
+        public Builder pageTitle(String title) {
+            if (this.additionalContext == null) {
+                this.additionalContext = new java.util.HashMap<>();
+            }
+            this.additionalContext.put("pageTitle", title);
+            return this;
+        }
+
         public FailureContext build() {
             return new FailureContext(
                     featureName, scenarioName, stepText, stepKeyword, tags,

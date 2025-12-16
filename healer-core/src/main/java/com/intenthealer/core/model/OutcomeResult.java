@@ -20,11 +20,25 @@ public final class OutcomeResult {
         return passed;
     }
 
+    /**
+     * Alias for isPassed() for compatibility.
+     */
+    public boolean isValid() {
+        return passed;
+    }
+
     public boolean isFailed() {
         return !passed;
     }
 
     public String getMessage() {
+        return message;
+    }
+
+    /**
+     * Alias for getMessage() for compatibility.
+     */
+    public String getReasoning() {
         return message;
     }
 

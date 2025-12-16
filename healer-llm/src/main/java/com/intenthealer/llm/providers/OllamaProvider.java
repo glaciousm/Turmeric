@@ -9,6 +9,7 @@ import com.intenthealer.core.model.*;
 import com.intenthealer.llm.LlmProvider;
 import com.intenthealer.llm.PromptBuilder;
 import com.intenthealer.llm.ResponseParser;
+import com.intenthealer.llm.util.SecurityUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -97,18 +98,18 @@ public class OllamaProvider implements LlmProvider {
 
             // Parse response
             HealDecision decision = responseParser.parseHealDecision(response.response);
-            decision.setLlmLatencyMs(System.currentTimeMillis() - startTime);
-            decision.setPromptTokens(response.promptEvalCount != null ? response.promptEvalCount : 0);
-            decision.setCompletionTokens(response.evalCount != null ? response.evalCount : 0);
-            decision.setLlmCostUsd(0.0); // Local models are free
+            int promptTokens = response.promptEvalCount != null ? response.promptEvalCount : 0;
+            int completionTokens = response.evalCount != null ? response.evalCount : 0;
+            logger.debug("Ollama response: latency={}ms, tokens={}/{}",
+                    System.currentTimeMillis() - startTime, promptTokens, completionTokens);
 
             return decision;
 
         } catch (IOException e) {
-            throw new LlmException("Ollama connection error: " + e.getMessage(), getProviderName(), model, e);
+            throw LlmException.connectionError(getProviderName(), SecurityUtils.sanitizeErrorMessage(e.getMessage()));
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new LlmException("Request interrupted", getProviderName(), model, e);
+            throw LlmException.connectionError(getProviderName(), "Request interrupted");
         }
     }
 
@@ -131,10 +132,10 @@ public class OllamaProvider implements LlmProvider {
             return responseParser.parseOutcomeResult(response.response);
 
         } catch (IOException e) {
-            throw new LlmException("Ollama connection error: " + e.getMessage(), getProviderName(), model, e);
+            throw LlmException.connectionError(getProviderName(), SecurityUtils.sanitizeErrorMessage(e.getMessage()));
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new LlmException("Request interrupted", getProviderName(), model, e);
+            throw LlmException.connectionError(getProviderName(), "Request interrupted");
         }
     }
 
@@ -170,8 +171,8 @@ public class OllamaProvider implements LlmProvider {
         HttpResponse<String> httpResponse = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
 
         if (httpResponse.statusCode() != 200) {
-            logger.error("Ollama API error: {} - {}", httpResponse.statusCode(), httpResponse.body());
-            throw new LlmException("Ollama API error: " + httpResponse.statusCode(),
+            logger.error("Ollama API error: {} - {}", httpResponse.statusCode(), SecurityUtils.sanitizeErrorMessage(httpResponse.body()));
+            throw new LlmException(SecurityUtils.sanitizeErrorMessage("Ollama API error: " + httpResponse.statusCode()),
                     getProviderName(), model);
         }
 
@@ -202,7 +203,7 @@ public class OllamaProvider implements LlmProvider {
             }
             return List.of();
         } catch (Exception e) {
-            logger.error("Error listing models: {}", e.getMessage());
+            logger.error("Error listing models: {}", SecurityUtils.sanitizeErrorMessage(e.getMessage()));
             return List.of();
         }
     }
@@ -227,7 +228,7 @@ public class OllamaProvider implements LlmProvider {
 
             return response.statusCode() == 200;
         } catch (Exception e) {
-            logger.error("Error pulling model: {}", e.getMessage());
+            logger.error("Error pulling model: {}", SecurityUtils.sanitizeErrorMessage(e.getMessage()));
             return false;
         }
     }

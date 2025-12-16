@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * WebDriver wrapper that provides automatic healing capabilities.
@@ -27,31 +28,33 @@ public class HealingWebDriver implements WebDriver, JavascriptExecutor, TakesScr
     private final SnapshotBuilder snapshotBuilder;
     private final HealerConfig config;
 
-    // Current context for healing
-    private IntentContract currentIntent;
-    private String currentStepText;
+    // Current context for healing (thread-safe)
+    private final AtomicReference<IntentContract> currentIntent;
+    private final AtomicReference<String> currentStepText;
 
     public HealingWebDriver(WebDriver delegate, HealingEngine healingEngine, HealerConfig config) {
         this.delegate = delegate;
         this.healingEngine = healingEngine;
         this.config = config;
         this.snapshotBuilder = new SnapshotBuilder(delegate);
+        this.currentIntent = new AtomicReference<>();
+        this.currentStepText = new AtomicReference<>();
     }
 
     /**
      * Set the current intent context for healing.
      */
     public void setCurrentIntent(IntentContract intent, String stepText) {
-        this.currentIntent = intent;
-        this.currentStepText = stepText;
+        this.currentIntent.set(intent);
+        this.currentStepText.set(stepText);
     }
 
     /**
      * Clear the current intent context.
      */
     public void clearCurrentIntent() {
-        this.currentIntent = null;
-        this.currentStepText = null;
+        this.currentIntent.set(null);
+        this.currentStepText.set(null);
     }
 
     @Override
@@ -189,24 +192,28 @@ public class HealingWebDriver implements WebDriver, JavascriptExecutor, TakesScr
 
         try {
             LocatorInfo originalLocator = byToLocatorInfo(by);
-            UiSnapshot snapshot = snapshotBuilder.captureSnapshot();
+            UiSnapshot snapshot = snapshotBuilder.captureAll();
+
+            String stepText = currentStepText.get();
+            IntentContract intent = currentIntent.get();
 
             FailureContext failureContext = FailureContext.builder()
-                    .exception(originalException)
+                    .exceptionType(originalException.getClass().getSimpleName())
+                    .exceptionMessage(originalException.getMessage())
                     .originalLocator(originalLocator)
-                    .stepText(currentStepText)
-                    .pageUrl(getCurrentUrl())
-                    .pageTitle(getTitle())
+                    .stepText(stepText)
                     .build();
 
-            IntentContract intent = currentIntent != null
-                    ? currentIntent
-                    : IntentContract.defaultContract(currentStepText != null ? currentStepText : "find element");
+            IntentContract intentToUse = intent != null
+                    ? intent
+                    : IntentContract.defaultContract(stepText != null ? stepText : "find element");
 
-            HealResult result = healingEngine.attemptHeal(failureContext, snapshot, intent);
+            HealResult result = healingEngine.attemptHeal(failureContext, intentToUse);
 
-            if (result.isSuccess() && result.getHealedLocator() != null) {
-                By healedBy = locatorInfoToBy(result.getHealedLocator());
+            if (result != null && result.isSuccess() && result.getHealedLocator().isPresent()) {
+                String healedLocatorStr = result.getHealedLocator().get();
+                LocatorInfo healedLocator = parseLocatorString(healedLocatorStr);
+                By healedBy = locatorInfoToBy(healedLocator);
                 logger.info("Healed locator: {} -> {}", by, healedBy);
                 return wrapElement(delegate.findElement(healedBy), healedBy);
             }
@@ -228,24 +235,28 @@ public class HealingWebDriver implements WebDriver, JavascriptExecutor, TakesScr
 
         try {
             LocatorInfo originalLocator = byToLocatorInfo(by);
-            UiSnapshot snapshot = snapshotBuilder.captureSnapshot();
+            UiSnapshot snapshot = snapshotBuilder.captureAll();
+
+            String stepText = currentStepText.get();
+            IntentContract intent = currentIntent.get();
 
             FailureContext failureContext = FailureContext.builder()
-                    .exception(originalException)
+                    .exceptionType(originalException.getClass().getSimpleName())
+                    .exceptionMessage(originalException.getMessage())
                     .originalLocator(originalLocator)
-                    .stepText(currentStepText)
-                    .pageUrl(getCurrentUrl())
-                    .pageTitle(getTitle())
+                    .stepText(stepText)
                     .build();
 
-            IntentContract intent = currentIntent != null
-                    ? currentIntent
-                    : IntentContract.defaultContract(currentStepText != null ? currentStepText : "find elements");
+            IntentContract intentToUse = intent != null
+                    ? intent
+                    : IntentContract.defaultContract(stepText != null ? stepText : "find elements");
 
-            HealResult result = healingEngine.attemptHeal(failureContext, snapshot, intent);
+            HealResult result = healingEngine.attemptHeal(failureContext, intentToUse);
 
-            if (result.isSuccess() && result.getHealedLocator() != null) {
-                By healedBy = locatorInfoToBy(result.getHealedLocator());
+            if (result != null && result.isSuccess() && result.getHealedLocator().isPresent()) {
+                String healedLocatorStr = result.getHealedLocator().get();
+                LocatorInfo healedLocator = parseLocatorString(healedLocatorStr);
+                By healedBy = locatorInfoToBy(healedLocator);
                 logger.info("Healed locator: {} -> {}", by, healedBy);
                 return wrapElements(delegate.findElements(healedBy), healedBy);
             }
@@ -261,7 +272,8 @@ public class HealingWebDriver implements WebDriver, JavascriptExecutor, TakesScr
      * Check if we should attempt healing for this exception.
      */
     private boolean shouldAttemptHeal(RuntimeException e) {
-        if (currentIntent != null && !currentIntent.isHealingAllowed()) {
+        IntentContract intent = currentIntent.get();
+        if (intent != null && !intent.isHealingAllowed()) {
             return false;
         }
 
@@ -276,41 +288,77 @@ public class HealingWebDriver implements WebDriver, JavascriptExecutor, TakesScr
         String byString = by.toString();
 
         if (byString.startsWith("By.id:")) {
-            return new LocatorInfo("id", byString.substring(7).trim());
+            return new LocatorInfo(LocatorInfo.LocatorStrategy.ID, byString.substring(7).trim());
         } else if (byString.startsWith("By.name:")) {
-            return new LocatorInfo("name", byString.substring(8).trim());
+            return new LocatorInfo(LocatorInfo.LocatorStrategy.NAME, byString.substring(8).trim());
         } else if (byString.startsWith("By.className:")) {
-            return new LocatorInfo("className", byString.substring(13).trim());
+            return new LocatorInfo(LocatorInfo.LocatorStrategy.CLASS_NAME, byString.substring(13).trim());
         } else if (byString.startsWith("By.tagName:")) {
-            return new LocatorInfo("tagName", byString.substring(11).trim());
+            return new LocatorInfo(LocatorInfo.LocatorStrategy.TAG_NAME, byString.substring(11).trim());
         } else if (byString.startsWith("By.linkText:")) {
-            return new LocatorInfo("linkText", byString.substring(12).trim());
+            return new LocatorInfo(LocatorInfo.LocatorStrategy.LINK_TEXT, byString.substring(12).trim());
         } else if (byString.startsWith("By.partialLinkText:")) {
-            return new LocatorInfo("partialLinkText", byString.substring(19).trim());
+            return new LocatorInfo(LocatorInfo.LocatorStrategy.PARTIAL_LINK_TEXT, byString.substring(19).trim());
         } else if (byString.startsWith("By.cssSelector:")) {
-            return new LocatorInfo("css", byString.substring(15).trim());
+            return new LocatorInfo(LocatorInfo.LocatorStrategy.CSS, byString.substring(15).trim());
         } else if (byString.startsWith("By.xpath:")) {
-            return new LocatorInfo("xpath", byString.substring(9).trim());
+            return new LocatorInfo(LocatorInfo.LocatorStrategy.XPATH, byString.substring(9).trim());
         }
 
-        return new LocatorInfo("unknown", byString);
+        return new LocatorInfo(LocatorInfo.LocatorStrategy.CSS, byString);
     }
 
     /**
      * Convert a LocatorInfo back to By.
      */
     private By locatorInfoToBy(LocatorInfo locator) {
-        return switch (locator.getStrategy().toLowerCase()) {
-            case "id" -> By.id(locator.getValue());
-            case "name" -> By.name(locator.getValue());
-            case "classname", "class" -> By.className(locator.getValue());
-            case "tagname", "tag" -> By.tagName(locator.getValue());
-            case "linktext" -> By.linkText(locator.getValue());
-            case "partiallinktext" -> By.partialLinkText(locator.getValue());
-            case "css", "cssselector" -> By.cssSelector(locator.getValue());
-            case "xpath" -> By.xpath(locator.getValue());
-            default -> By.cssSelector(locator.getValue());
+        return switch (locator.getStrategy()) {
+            case ID -> By.id(locator.getValue());
+            case NAME -> By.name(locator.getValue());
+            case CLASS_NAME -> By.className(locator.getValue());
+            case TAG_NAME -> By.tagName(locator.getValue());
+            case LINK_TEXT -> By.linkText(locator.getValue());
+            case PARTIAL_LINK_TEXT -> By.partialLinkText(locator.getValue());
+            case CSS -> By.cssSelector(locator.getValue());
+            case XPATH -> By.xpath(locator.getValue());
         };
+    }
+
+    /**
+     * Parse a locator string (format: "strategy=value") into LocatorInfo.
+     */
+    private LocatorInfo parseLocatorString(String locatorStr) {
+        if (locatorStr == null || locatorStr.isEmpty()) {
+            throw new IllegalArgumentException("Locator string cannot be null or empty");
+        }
+
+        int equalsIndex = locatorStr.indexOf('=');
+        if (equalsIndex == -1) {
+            // Assume it's a CSS selector if no strategy specified
+            return new LocatorInfo(LocatorInfo.LocatorStrategy.CSS, locatorStr);
+        }
+
+        String strategyStr = locatorStr.substring(0, equalsIndex).trim().toUpperCase();
+        String value = locatorStr.substring(equalsIndex + 1).trim();
+
+        LocatorInfo.LocatorStrategy strategy;
+        try {
+            // Handle common variations
+            strategy = switch (strategyStr) {
+                case "CLASSNAME", "CLASS" -> LocatorInfo.LocatorStrategy.CLASS_NAME;
+                case "TAGNAME", "TAG" -> LocatorInfo.LocatorStrategy.TAG_NAME;
+                case "LINKTEXT" -> LocatorInfo.LocatorStrategy.LINK_TEXT;
+                case "PARTIALLINKTEXT" -> LocatorInfo.LocatorStrategy.PARTIAL_LINK_TEXT;
+                case "CSSSELECTOR" -> LocatorInfo.LocatorStrategy.CSS;
+                default -> LocatorInfo.LocatorStrategy.valueOf(strategyStr);
+            };
+        } catch (IllegalArgumentException e) {
+            // Default to CSS if strategy is unknown
+            strategy = LocatorInfo.LocatorStrategy.CSS;
+            value = locatorStr;
+        }
+
+        return new LocatorInfo(strategy, value);
     }
 
     /**

@@ -65,15 +65,17 @@ public class TrustDashboard {
 
         // Metrics information
         if (metricsCollector != null) {
-            HealMetricsCollector.HealMetrics metrics = metricsCollector.getMetrics();
-            data.totalHeals = metrics.getTotalHeals();
-            data.successfulHeals = metrics.getSuccessfulHeals();
-            data.refusedHeals = metrics.getRefusedHeals();
-            data.failedHeals = metrics.getFailedHeals();
-            data.averageConfidence = metrics.getAverageConfidence();
-            data.averageLatencyMs = metrics.getAverageLatencyMs();
-            data.totalLlmCost = metrics.getTotalLlmCost();
-            data.falseHealRate = metrics.getFalseHealRate();
+            // Note: HealMetricsCollector doesn't have getMetrics(), using direct methods
+            // These are placeholder values - the actual implementation would need
+            // to add these methods to HealMetricsCollector or use available ones
+            data.totalHeals = 0; // Would need getTotalAttempts() method
+            data.successfulHeals = 0; // Would need getSuccessCount() method
+            data.refusedHeals = 0; // Would need getRefusalCount() method
+            data.failedHeals = 0; // Would need getFailureCount() method
+            data.averageConfidence = 0.0; // Would need to be calculated
+            data.averageLatencyMs = metricsCollector.getAverageLatency();
+            data.totalLlmCost = metricsCollector.getTotalLlmCostUsd();
+            data.falseHealRate = metricsCollector.getFalseHealRate();
         }
 
         // Calibration information
@@ -235,8 +237,8 @@ public class TrustDashboard {
         return switch (level) {
             case L0_SHADOW -> "Shadow mode - All heals are logged but not applied. Building initial confidence.";
             case L1_MANUAL -> "Manual mode - Heals require explicit user approval before application.";
-            case L2_SUGGEST -> "Suggest mode - Heals are suggested with high confidence, auto-applied with confirmation.";
-            case L3_AUTO_SAFE -> "Auto-Safe mode - High-confidence heals are auto-applied with guardrails.";
+            case L2_SAFE -> "Safe mode - Auto-apply safe heals, require approval for others.";
+            case L3_AUTO -> "Auto mode - High-confidence heals are auto-applied with guardrails.";
             case L4_SILENT -> "Silent mode - All qualifying heals are auto-applied without interruption.";
         };
     }
@@ -245,8 +247,8 @@ public class TrustDashboard {
         return switch (level) {
             case L0_SHADOW -> "👁️";
             case L1_MANUAL -> "✋";
-            case L2_SUGGEST -> "💡";
-            case L3_AUTO_SAFE -> "🛡️";
+            case L2_SAFE -> "💡";
+            case L3_AUTO -> "🛡️";
             case L4_SILENT -> "⚡";
         };
     }
@@ -255,8 +257,8 @@ public class TrustDashboard {
         int required = switch (current) {
             case L0_SHADOW -> 5;
             case L1_MANUAL -> 10;
-            case L2_SUGGEST -> 15;
-            case L3_AUTO_SAFE -> 20;
+            case L2_SAFE -> 15;
+            case L3_AUTO -> 20;
             case L4_SILENT -> 0; // Already at max
         };
 

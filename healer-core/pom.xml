@@ -20,6 +20,12 @@
     </licenses>
 
     <dependencies>
+        <!-- Selenium (optional - only needed for context handlers and specialized healers) -->
+        <dependency>
+            <groupId>org.seleniumhq.selenium</groupId>
+            <artifactId>selenium-java</artifactId>
+            <optional>true</optional>
+        </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-core</artifactId>

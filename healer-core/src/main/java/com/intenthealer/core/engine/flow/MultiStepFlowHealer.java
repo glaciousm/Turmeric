@@ -150,18 +150,22 @@ public class MultiStepFlowHealer {
 
             HealResult healResult = healer.apply(request);
 
+            LocatorInfo healedLocator = healResult.getHealedLocator()
+                    .map(loc -> new LocatorInfo(LocatorInfo.LocatorStrategy.CSS, loc))
+                    .orElse(null);
+
             StepHealResult stepResult = new StepHealResult(
                     step.stepId(),
                     failure.failedLocator(),
-                    healResult.getHealedLocator(),
+                    healedLocator,
                     healResult.isSuccess(),
                     healResult.getConfidence(),
-                    healResult.getReasoning()
+                    healResult.getReasoning().orElse(null)
             );
             results.add(stepResult);
 
-            if (healResult.isSuccess()) {
-                healedLocators.put(step.stepId(), healResult.getHealedLocator());
+            if (healResult.isSuccess() && healedLocator != null) {
+                healedLocators.put(step.stepId(), healedLocator);
             }
         }
 
@@ -190,16 +194,20 @@ public class MultiStepFlowHealer {
 
                     HealResult healResult = healer.apply(request);
 
+                    LocatorInfo healedLocator = healResult.getHealedLocator()
+                            .map(loc -> new LocatorInfo(LocatorInfo.LocatorStrategy.CSS, loc))
+                            .orElse(null);
+
                     return new StepHealResult(
                             stepId,
                             failure.failedLocator(),
-                            healResult.getHealedLocator(),
+                            healedLocator,
                             healResult.isSuccess(),
                             healResult.getConfidence(),
-                            healResult.getReasoning()
+                            healResult.getReasoning().orElse(null)
                     );
                 })
-                .toList();
+                .collect(java.util.stream.Collectors.toList());
     }
 
     /**
@@ -244,18 +252,22 @@ public class MultiStepFlowHealer {
 
             HealResult healResult = healer.apply(request);
 
+            LocatorInfo healedLocator = healResult.getHealedLocator()
+                    .map(loc -> new LocatorInfo(LocatorInfo.LocatorStrategy.CSS, loc))
+                    .orElse(null);
+
             StepHealResult stepResult = new StepHealResult(
                     step.stepId(),
                     failure.failedLocator(),
-                    healResult.getHealedLocator(),
+                    healedLocator,
                     healResult.isSuccess(),
                     healResult.getConfidence(),
-                    healResult.getReasoning()
+                    healResult.getReasoning().orElse(null)
             );
             results.add(stepResult);
 
-            if (healResult.isSuccess()) {
-                healedLocators.put(step.stepId(), healResult.getHealedLocator());
+            if (healResult.isSuccess() && healedLocator != null) {
+                healedLocators.put(step.stepId(), healedLocator);
             }
         }
 

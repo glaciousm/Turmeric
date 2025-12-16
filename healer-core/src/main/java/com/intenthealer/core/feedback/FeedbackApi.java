@@ -2,7 +2,7 @@ package com.intenthealer.core.feedback;
 
 import com.intenthealer.core.engine.blacklist.HealBlacklist;
 import com.intenthealer.core.engine.trust.TrustLevelManager;
-import com.intenthealer.core.model.HealMode;
+import com.intenthealer.core.engine.blacklist.BlacklistEntry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -104,11 +104,12 @@ public class FeedbackApi {
 
         // If healed locator was wrong, blacklist it
         if (correction.shouldBlacklist() && blacklist != null) {
-            blacklist.add(
-                    correction.getHealedLocator(),
-                    correction.getOriginalLocator(),
-                    correction.getReason()
-            );
+            BlacklistEntry entry = BlacklistEntry.builder()
+                    .originalLocator("CSS", correction.getOriginalLocator())
+                    .healedLocator("CSS", correction.getHealedLocator())
+                    .reason(correction.getReason())
+                    .build();
+            blacklist.add(entry);
         }
 
         // Adjust trust
@@ -135,7 +136,12 @@ public class FeedbackApi {
             return FeedbackResult.error("Blacklist not configured");
         }
 
-        blacklist.add(badLocator, originalLocator, reason);
+        BlacklistEntry entry = BlacklistEntry.builder()
+                .originalLocator("CSS", originalLocator)
+                .healedLocator("CSS", badLocator)
+                .reason(reason)
+                .build();
+        blacklist.add(entry);
 
         logger.info("Locator blacklisted: {} -> {} ({})", originalLocator, badLocator, reason);
         return FeedbackResult.success("Locator blacklisted");

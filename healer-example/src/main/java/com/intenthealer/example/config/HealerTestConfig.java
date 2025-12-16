@@ -24,14 +24,13 @@ public class HealerTestConfig {
 
     private HealerTestConfig() {
         // Load configuration from YAML file or use defaults
-        this.config = ConfigLoader.loadFromClasspath("healer-config.yml")
-                .orElse(HealerConfig.defaults());
+        this.config = new ConfigLoader().load();
 
         // Initialize LLM orchestrator
-        this.llmOrchestrator = new LlmOrchestrator(config.getLlm());
+        this.llmOrchestrator = new LlmOrchestrator();
 
         // Initialize healing engine
-        this.healingEngine = new HealingEngine(config, llmOrchestrator);
+        this.healingEngine = new HealingEngine(config);
     }
 
     public static synchronized HealerTestConfig getInstance() {

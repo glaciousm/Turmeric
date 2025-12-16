@@ -249,4 +249,48 @@ public class ReportGenerator {
     public HealReport getCurrentReport() {
         return currentReport;
     }
+
+    /**
+     * Generate HTML report from a directory of JSON reports.
+     */
+    public void generateHtmlFromDirectory(String inputDir, String outputPath) throws IOException {
+        Path dirPath = Path.of(inputDir);
+        if (!Files.exists(dirPath)) {
+            throw new IOException("Input directory does not exist: " + inputDir);
+        }
+
+        // Load all JSON reports
+        HealReport combinedReport = new HealReport();
+        combinedReport.setTimestamp(Instant.now());
+
+        Files.walk(dirPath)
+                .filter(p -> p.toString().endsWith(".json"))
+                .filter(p -> p.getFileName().toString().startsWith("heal"))
+                .forEach(p -> {
+                    try {
+                        HealReport report = objectMapper.readValue(p.toFile(), HealReport.class);
+                        for (HealEvent event : report.getEvents()) {
+                            combinedReport.addEvent(event);
+                        }
+                    } catch (IOException e) {
+                        logger.warn("Failed to read report: {}", p, e);
+                    }
+                });
+
+        // Generate combined HTML
+        HealReport originalReport = currentReport;
+        currentReport = combinedReport;
+        String html = generateHtml();
+        currentReport = originalReport;
+
+        Files.writeString(Path.of(outputPath), html);
+        logger.info("Combined HTML report written: {}", outputPath);
+    }
+
+    /**
+     * Load a single report from a JSON file.
+     */
+    public HealReport loadReport(String path) throws IOException {
+        return objectMapper.readValue(new File(path), HealReport.class);
+    }
 }

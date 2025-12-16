@@ -121,7 +121,7 @@ class TrustLevelManagerTest {
         manager.setLevel(TrustLevel.L2_SAFE);
         // L2_SAFE should auto-apply safe actions
         assertTrue(manager.canAutoApply(ActionType.CLICK));
-        assertTrue(manager.canAutoApply(ActionType.SEND_KEYS));
+        assertTrue(manager.canAutoApply(ActionType.TYPE));
         assertFalse(manager.canAutoApply(ActionType.SUBMIT));
 
         manager.setLevel(TrustLevel.L3_AUTO);

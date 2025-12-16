@@ -61,6 +61,24 @@ public class LlmException extends HealingException {
                 provider, model);
     }
 
+    /**
+     * Creates an exception for connection error.
+     */
+    public static LlmException connectionError(String provider, String message) {
+        return new LlmException(
+                "Connection error for " + provider + ": " + message,
+                provider, "unknown");
+    }
+
+    /**
+     * Creates an exception for connection error with cause.
+     */
+    public static LlmException connectionError(String provider, Throwable cause) {
+        return new LlmException(
+                "Connection error for " + provider + ": " + cause.getMessage(),
+                cause, provider, "unknown");
+    }
+
     @Override
     public String toString() {
         return "LlmException{provider='" + provider + "', model='" + model +

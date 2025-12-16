@@ -70,6 +70,14 @@ public final class ExecutionContext {
     }
 
     /**
+     * Gets the current page title from the after snapshot.
+     * Alias for getCurrentTitle().
+     */
+    public String getPageTitle() {
+        return getCurrentTitle();
+    }
+
+    /**
      * Checks if URL changed between before and after snapshots.
      */
     public boolean urlChanged() {

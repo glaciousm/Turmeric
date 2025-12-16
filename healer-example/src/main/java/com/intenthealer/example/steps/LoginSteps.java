@@ -43,7 +43,7 @@ public class LoginSteps {
     @Intent(
         action = "navigate_to_login",
         description = "Navigate to the application login page",
-        healPolicy = HealPolicy.AUTO_SAFE
+        policy = HealPolicy.AUTO_SAFE
     )
     public void i_am_on_the_login_page() {
         driver.setCurrentIntent(
@@ -63,9 +63,9 @@ public class LoginSteps {
     @Intent(
         action = "enter_username",
         description = "Enter the username in the login form",
-        healPolicy = HealPolicy.AUTO_SAFE
+        policy = HealPolicy.AUTO_SAFE
     )
-    @Invariant(check = NoErrorBannerCheck.class)
+    @Invariant(value = NoErrorBannerCheck.class)
     public void i_enter_username(String username) {
         driver.setCurrentIntent(
             IntentContract.builder()
@@ -84,9 +84,9 @@ public class LoginSteps {
     @Intent(
         action = "enter_password",
         description = "Enter the password in the login form",
-        healPolicy = HealPolicy.AUTO_SAFE
+        policy = HealPolicy.AUTO_SAFE
     )
-    @Invariant(check = NoErrorBannerCheck.class)
+    @Invariant(value = NoErrorBannerCheck.class)
     public void i_enter_password(String password) {
         driver.setCurrentIntent(
             IntentContract.builder()
@@ -105,10 +105,10 @@ public class LoginSteps {
     @Intent(
         action = "submit_login",
         description = "Click the login/submit button to authenticate",
-        healPolicy = HealPolicy.AUTO_SAFE
+        policy = HealPolicy.AUTO_SAFE
     )
     @Outcome(
-        check = UrlChangedCheck.class,
+        checks = {UrlChangedCheck.class},
         description = "URL should change after successful login"
     )
     public void i_click_the_login_button() {
@@ -129,7 +129,7 @@ public class LoginSteps {
     @Intent(
         action = "verify_login_success",
         description = "Verify the user is logged in and on the dashboard",
-        healPolicy = HealPolicy.OFF  // Assertions should not be healed
+        policy = HealPolicy.OFF  // Assertions should not be healed
     )
     public void i_should_be_logged_in_successfully() {
         String currentUrl = driver.getCurrentUrl();
@@ -143,7 +143,7 @@ public class LoginSteps {
     @Intent(
         action = "verify_error_message",
         description = "Verify an error message is displayed",
-        healPolicy = HealPolicy.OFF  // Assertions should not be healed
+        policy = HealPolicy.OFF  // Assertions should not be healed
     )
     public void i_should_see_an_error_message(String expectedMessage) {
         String actualError = loginPage.getErrorMessage();
@@ -158,7 +158,7 @@ public class LoginSteps {
     @Intent(
         action = "verify_still_on_login",
         description = "Verify the user remains on the login page",
-        healPolicy = HealPolicy.OFF
+        policy = HealPolicy.OFF
     )
     public void i_should_still_be_on_the_login_page() {
         String currentUrl = driver.getCurrentUrl();

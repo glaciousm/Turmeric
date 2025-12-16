@@ -20,6 +20,30 @@ public final class LocatorInfo {
         this.value = Objects.requireNonNull(value, "value cannot be null");
     }
 
+    /**
+     * Constructor that accepts string strategy for convenience.
+     */
+    public LocatorInfo(String strategyStr, String value) {
+        this(parseStrategy(strategyStr), value);
+    }
+
+    private static LocatorStrategy parseStrategy(String strategyStr) {
+        if (strategyStr == null) {
+            return LocatorStrategy.CSS;
+        }
+        return switch (strategyStr.toLowerCase()) {
+            case "id" -> LocatorStrategy.ID;
+            case "name" -> LocatorStrategy.NAME;
+            case "classname", "class_name" -> LocatorStrategy.CLASS_NAME;
+            case "css", "cssselector" -> LocatorStrategy.CSS;
+            case "xpath" -> LocatorStrategy.XPATH;
+            case "linktext", "link_text" -> LocatorStrategy.LINK_TEXT;
+            case "partiallinktext", "partial_link_text" -> LocatorStrategy.PARTIAL_LINK_TEXT;
+            case "tagname", "tag_name" -> LocatorStrategy.TAG_NAME;
+            default -> LocatorStrategy.CSS;
+        };
+    }
+
     public LocatorStrategy getStrategy() {
         return strategy;
     }

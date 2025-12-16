@@ -3,7 +3,6 @@ package com.intenthealer.junit;
 import com.intenthealer.core.config.ConfigLoader;
 import com.intenthealer.core.config.HealerConfig;
 import com.intenthealer.core.engine.HealingEngine;
-import com.intenthealer.core.model.HealMode;
 import com.intenthealer.report.ReportGenerator;
 import com.intenthealer.report.model.HealReport;
 import com.intenthealer.selenium.driver.HealingWebDriver;
@@ -52,13 +51,11 @@ public class HealerExtension implements BeforeAllCallback, AfterAllCallback,
                 context.getRequiredTestClass().getSimpleName());
 
         try {
-            HealerConfig config = ConfigLoader.load();
+            HealerConfig config = new ConfigLoader().load();
             context.getStore(NAMESPACE).put(CONFIG_KEY, config);
 
             if (config.isEnabled()) {
-                HealingEngine engine = HealingEngine.builder()
-                        .config(config)
-                        .build();
+                HealingEngine engine = new HealingEngine(config);
                 context.getStore(NAMESPACE).put(ENGINE_KEY, engine);
 
                 ReportGenerator generator = new ReportGenerator();
@@ -76,11 +73,6 @@ public class HealerExtension implements BeforeAllCallback, AfterAllCallback,
 
     @Override
     public void afterAll(ExtensionContext context) throws Exception {
-        HealingEngine engine = context.getStore(NAMESPACE).get(ENGINE_KEY, HealingEngine.class);
-        if (engine != null) {
-            engine.shutdown();
-        }
-
         // Generate final report for the test class
         generateClassReport(context);
     }
@@ -105,7 +97,7 @@ public class HealerExtension implements BeforeAllCallback, AfterAllCallback,
         context.getStore(NAMESPACE).put(REPORT_KEY, report);
 
         // Wrap WebDriver fields
-        context.getTestInstance().ifPresent(this::wrapWebDriverFields);
+        context.getTestInstance().ifPresent(instance -> wrapWebDriverFields(instance, context));
     }
 
     @Override
@@ -139,14 +131,9 @@ public class HealerExtension implements BeforeAllCallback, AfterAllCallback,
     /**
      * Wrap WebDriver fields in test instance with HealingWebDriver.
      */
-    private void wrapWebDriverFields(Object testInstance) {
-        ExtensionContext context = getContextFromInstance(testInstance);
-        HealingEngine engine = context != null
-                ? context.getStore(NAMESPACE).get(ENGINE_KEY, HealingEngine.class)
-                : null;
-        HealerConfig config = context != null
-                ? context.getStore(NAMESPACE).get(CONFIG_KEY, HealerConfig.class)
-                : null;
+    private void wrapWebDriverFields(Object testInstance, ExtensionContext context) {
+        HealingEngine engine = context.getStore(NAMESPACE).get(ENGINE_KEY, HealingEngine.class);
+        HealerConfig config = context.getStore(NAMESPACE).get(CONFIG_KEY, HealerConfig.class);
 
         if (engine == null || config == null) {
             return;
@@ -161,8 +148,7 @@ public class HealerExtension implements BeforeAllCallback, AfterAllCallback,
                         WebDriver originalDriver = (WebDriver) field.get(testInstance);
 
                         if (originalDriver != null && !(originalDriver instanceof HealingWebDriver)) {
-                            HealMode mode = HealMode.valueOf(config.getMode().toUpperCase());
-                            HealingWebDriver healingDriver = new HealingWebDriver(originalDriver, engine, mode);
+                            HealingWebDriver healingDriver = new HealingWebDriver(originalDriver, engine, config);
                             field.set(testInstance, healingDriver);
                             logger.debug("Wrapped WebDriver field '{}' with HealingWebDriver", field.getName());
                         }
@@ -198,11 +184,13 @@ public class HealerExtension implements BeforeAllCallback, AfterAllCallback,
             HealerConfig config = context.getStore(NAMESPACE).get(CONFIG_KEY, HealerConfig.class);
             ReportGenerator generator = context.getStore(NAMESPACE).get(GENERATOR_KEY, ReportGenerator.class);
 
-            if (config != null && config.getReports() != null && config.getReports().isEnabled() && generator != null) {
+            if (config != null && config.getReport() != null && config.getReport().isEnabled() && generator != null) {
                 try {
-                    String reportPath = config.getReports().getOutputDir() + "/test-"
-                            + context.getDisplayName().replaceAll("[^a-zA-Z0-9]", "_");
-                    generator.generateJsonReport(report, reportPath + ".json");
+                    generator.startReport();
+                    for (var event : report.getEvents()) {
+                        generator.addEvent(event);
+                    }
+                    generator.finishReport();
                 } catch (Exception e) {
                     logger.warn("Failed to generate test report: {}", e.getMessage());
                 }
@@ -217,29 +205,23 @@ public class HealerExtension implements BeforeAllCallback, AfterAllCallback,
         HealerConfig config = context.getStore(NAMESPACE).get(CONFIG_KEY, HealerConfig.class);
         ReportGenerator generator = context.getStore(NAMESPACE).get(GENERATOR_KEY, ReportGenerator.class);
 
-        if (config != null && config.getReports() != null && config.getReports().isEnabled() && generator != null) {
+        if (config != null && config.getReport() != null && config.getReport().isEnabled() && generator != null) {
             try {
                 String className = context.getRequiredTestClass().getSimpleName();
-                String reportPath = config.getReports().getOutputDir() + "/class-" + className;
 
                 HealReport classReport = new HealReport();
                 classReport.setTestName("Class: " + className);
                 classReport.setEndTime(Instant.now());
 
-                generator.generateHtmlReport(classReport, reportPath + ".html");
-                logger.info("Class report generated: {}", reportPath);
+                generator.startReport();
+                for (var event : classReport.getEvents()) {
+                    generator.addEvent(event);
+                }
+                generator.finishReport();
+                logger.info("Class report generated for: {}", className);
             } catch (Exception e) {
                 logger.warn("Failed to generate class report: {}", e.getMessage());
             }
         }
-    }
-
-    /**
-     * Get extension context from test instance (workaround for field wrapping).
-     */
-    private ExtensionContext getContextFromInstance(Object testInstance) {
-        // This is a simplified implementation - in practice,
-        // you'd use extension store callbacks
-        return null;
     }
 }

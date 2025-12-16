@@ -16,7 +16,7 @@ public class ConfigCommand {
      * Show current configuration.
      */
     public void show() {
-        HealerConfig config = ConfigLoader.load();
+        HealerConfig config = new ConfigLoader().load();
 
         System.out.println();
         System.out.println("═══════════════════════════════════════════════════════════════");
@@ -41,7 +41,7 @@ public class ConfigCommand {
         if (config.getGuardrails() != null) {
             System.out.println("Guardrails:");
             System.out.printf("  Min Confidence:   %.2f%n", config.getGuardrails().getMinConfidence());
-            System.out.printf("  Max Candidates:   %d%n", config.getGuardrails().getMaxCandidates());
+            System.out.printf("  Max Heal Attempts: %d%n", config.getGuardrails().getMaxHealAttemptsPerStep());
             if (config.getGuardrails().getForbiddenKeywords() != null) {
                 System.out.printf("  Forbidden Keywords: %d configured%n",
                         config.getGuardrails().getForbiddenKeywords().size());
@@ -58,11 +58,11 @@ public class ConfigCommand {
             System.out.println();
         }
 
-        if (config.getReports() != null) {
+        if (config.getReport() != null) {
             System.out.println("Reports:");
-            System.out.printf("  Enabled:          %s%n", config.getReports().isEnabled());
-            System.out.printf("  Output Dir:       %s%n", config.getReports().getOutputDir());
-            System.out.printf("  Format:           %s%n", config.getReports().getFormat());
+            System.out.printf("  Enabled:          %s%n", config.getReport().isEnabled());
+            System.out.printf("  Output Dir:       %s%n", config.getReport().getOutputDir());
+            System.out.printf("  Format:           %s%n", config.getReport().getFormat());
             System.out.println();
         }
 
@@ -76,7 +76,7 @@ public class ConfigCommand {
         System.out.println("Validating configuration...");
 
         try {
-            HealerConfig config = ConfigLoader.load();
+            HealerConfig config = new ConfigLoader().load();
 
             boolean valid = true;
             int warnings = 0;

@@ -745,10 +745,25 @@ healer cache help
 
 #### Installation
 
+**From Marketplace (when available):**
+
 1. Open IntelliJ IDEA
 2. Go to **Settings** → **Plugins** → **Marketplace**
 3. Search for "Intent Healer"
 4. Click **Install** and restart IDE
+
+**From Source:**
+
+The IntelliJ plugin is built separately using Gradle:
+
+```bash
+cd healer-intellij
+./gradlew buildPlugin
+```
+
+Then install the plugin ZIP from `build/distributions/` via **Settings** → **Plugins** → **⚙️** → **Install Plugin from Disk...**
+
+For more details, see [healer-intellij/README.md](../healer-intellij/README.md).
 
 #### Features
 
@@ -1040,6 +1055,121 @@ Heal refused: element contains forbidden keyword 'delete'
 ```
 **Solution:** Remove keyword from `forbidden_keywords` if safe, or use `HealPolicy.AUTO_ALL`.
 
+### LLM Provider Issues
+
+#### Connection timeout
+```
+LlmException: Connection timed out
+```
+**Solutions:**
+- Increase `timeout_seconds` in LLM config (default: 30)
+- Check network connectivity and firewall rules
+- Verify the API endpoint is reachable
+- For Ollama: ensure the local server is running (`ollama serve`)
+
+#### Rate limiting (HTTP 429)
+```
+OpenAI API error: 429 - Rate limit exceeded
+```
+**Solutions:**
+- Enable caching to reduce API calls (`cache.enabled: true`)
+- Configure fallback providers for automatic failover
+- Reduce `max_requests_per_test_run` if running parallel tests
+- Contact your LLM provider to increase rate limits
+
+#### Invalid API response
+```
+Failed to parse LLM response: Invalid JSON structure
+```
+**Solutions:**
+- Ensure you're using a supported model version
+- Check that `max_tokens_per_request` is sufficient (minimum 500 recommended)
+- Enable `include_llm_prompts: true` to debug the actual prompts being sent
+
+### Selenium/WebDriver Issues
+
+#### Stale element after healing
+```
+StaleElementReferenceException after heal
+```
+**Solutions:**
+- Enable `@Outcome` validation to verify healed element
+- Add explicit waits after dynamic page updates
+- Check for iframe/shadow DOM context switches
+
+#### Element not interactable after healing
+```
+ElementNotInteractableException: element not visible
+```
+**Solutions:**
+- Verify the healed locator targets a visible element
+- Add `snapshot.include_hidden: false` to exclude hidden elements
+- Check for overlaying elements (modals, popups)
+
+#### Slow healing performance
+```
+Healing taking >10 seconds per element
+```
+**Solutions:**
+- Enable caching for repeated heals (`cache.enabled: true`)
+- Reduce `snapshot.max_elements` to limit DOM capture (default: 500)
+- Use a faster LLM model (e.g., `gpt-4o-mini` instead of `gpt-4`)
+- Configure `snapshot.capture_screenshot: false` if not needed
+
+### Configuration Issues
+
+#### Configuration file not found
+```
+Warning: No healer-config.yml found, using defaults
+```
+**Solutions:**
+- Create `healer-config.yml` in project root or `src/test/resources/`
+- Set `HEALER_CONFIG` environment variable to custom path
+- Run `healer config init` to create a template
+
+#### Invalid configuration values
+```
+ConfigurationException: Invalid confidence_threshold: 1.5
+```
+**Solutions:**
+- Run `healer config validate` to check for errors
+- Ensure numeric values are in valid ranges:
+  - `confidence_threshold`: 0.0 - 1.0
+  - `temperature`: 0.0 - 2.0
+  - `timeout_seconds`: 1 - 300
+
+### Cache Issues
+
+#### Cache not persisting between runs
+```
+Cache empty on test restart
+```
+**Solutions:**
+- Set `cache.storage: FILE` for persistent storage
+- Verify `cache.file_path` directory is writable
+- Check `cache.persistence_enabled: true`
+
+#### Cache returning stale heals
+```
+Cached heal no longer valid
+```
+**Solutions:**
+- Clear cache: `healer cache clear --force`
+- Reduce `cache.ttl_hours` for faster expiration
+- Set `cache.min_confidence_to_cache` higher to only cache high-quality heals
+
+### Thread Safety Issues
+
+#### Concurrent test failures
+```
+Multiple tests failing with inconsistent heals
+```
+**Solutions:**
+- Intent Healer is thread-safe by default
+- Each `HealingWebDriver` instance maintains its own context
+- Avoid sharing driver instances across test threads
+- Use `@Execution(ExecutionMode.SAME_THREAD)` in JUnit if needed
+
 ### Debug Mode
 
 Enable detailed logging:
@@ -1057,12 +1187,23 @@ export HEALER_DEBUG=true
 mvn test
 ```
 
+View detailed logs with SLF4J:
+```xml
+<!-- In logback.xml -->
+<logger name="com.intenthealer" level="DEBUG"/>
+```
+
 ### Getting Help
 
 1. Check logs in `target/healer-reports/`
 2. Review heal history in IDE plugin
 3. Run `healer config validate` to check configuration
 4. Enable debug mode for detailed diagnostics
+5. Check the [GitHub Issues](https://github.com/intenthealer/intent-healer/issues) for known problems
+6. File a bug report with:
+   - Healer configuration (with API keys redacted)
+   - Error message and stack trace
+   - Steps to reproduce
 
 ---
 
