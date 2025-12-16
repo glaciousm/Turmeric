@@ -95,7 +95,36 @@ All 10 showcase tests pass successfully, demonstrating healing across various lo
 
 ### Healing Success Rate: 100%
 
-Every test uses a **broken locator** that would fail without Intent Healer:
+Every test uses a **broken locator** that would fail without Intent Healer.
+
+### Healing Summary Output
+
+After tests complete, a summary shows exactly what was healed:
+
+```
+╔════════════════════════════════════════════════════════════════════════════╗
+║                    INTENT HEALER - HEALING SUMMARY                        ║
+╠════════════════════════════════════════════════════════════════════════════╣
+║  Total healed locators: 10                                                 ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+  [1] I click the login button using wrong ID "login-btn"
+      │ ORIGINAL:  By.id: login-btn
+      │ HEALED TO: By.cssSelector: button.radius
+      │ Confidence: 93%
+
+  [2] I click the checkbox using wrong class "checkbox-input"
+      │ ORIGINAL:  By.className: checkbox-input
+      │ HEALED TO: By.cssSelector: input[type='checkbox']
+      │ Confidence: 95%
+
+  ... (all heals listed)
+
+  TIP: Update your Page Objects with the healed locators above to prevent
+       repeated healing and improve test execution speed.
+```
+
+This actionable output helps you update your source code with the correct locators.
 
 | Test | Wrong Locator | Real Element | Healed? |
 |------|---------------|--------------|---------|

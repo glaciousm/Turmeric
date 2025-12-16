@@ -14,6 +14,7 @@ Intent Healer is an intelligent test automation framework that automatically fix
 - **Intent Annotations**: Semantic `@Intent`, `@Invariant`, `@Outcome` for smarter healing
 - **Configurable Guardrails**: Control when and how healing occurs
 - **Caching**: Remember healed locators to speed up subsequent runs
+- **Healing Summary**: Console report after each run showing what was healed
 - **Reports**: HTML dashboards showing healing activity and trends
 
 ---
@@ -145,6 +146,28 @@ mvn test -pl healer-showcase
 | ... | ... | ... | ... |
 
 See [healer-showcase/README.md](healer-showcase/README.md) for complete details.
+
+### Healing Summary
+
+After each test run, a summary is printed showing all healed locators:
+
+```
+╔════════════════════════════════════════════════════════════════════════════╗
+║                    INTENT HEALER - HEALING SUMMARY                        ║
+╠════════════════════════════════════════════════════════════════════════════╣
+║  Total healed locators: 3                                                  ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+  [1] I click the login button
+      │ ORIGINAL:  By.id: login-btn
+      │ HEALED TO: By.cssSelector: button.radius
+      │ Confidence: 93%
+
+  TIP: Update your Page Objects with the healed locators above to prevent
+       repeated healing and improve test execution speed.
+```
+
+This helps you quickly identify and fix broken locators in your source code.
 
 ---
 
