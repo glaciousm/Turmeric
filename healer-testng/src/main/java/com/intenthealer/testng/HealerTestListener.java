@@ -1,8 +1,12 @@
 package com.intenthealer.testng;
 
+import com.intenthealer.core.config.AutoUpdateConfig;
 import com.intenthealer.core.config.ConfigLoader;
 import com.intenthealer.core.config.HealerConfig;
 import com.intenthealer.core.engine.HealingEngine;
+import com.intenthealer.core.engine.patch.SourceCodeUpdater;
+import com.intenthealer.core.engine.patch.ValidatedHealRegistry;
+import com.intenthealer.core.model.ValidatedHeal;
 import com.intenthealer.report.ReportGenerator;
 import com.intenthealer.report.model.HealReport;
 import com.intenthealer.selenium.driver.HealingWebDriver;
@@ -13,6 +17,7 @@ import org.testng.*;
 
 import java.lang.reflect.Field;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -31,6 +36,8 @@ public class HealerTestListener implements ITestListener, ISuiteListener, IInvok
     private HealerConfig config;
     private HealingEngine healingEngine;
     private ReportGenerator reportGenerator;
+    private ValidatedHealRegistry healRegistry;
+    private SourceCodeUpdater sourceCodeUpdater;
     private boolean enabled = true;
 
     @Override
@@ -44,6 +51,15 @@ public class HealerTestListener implements ITestListener, ISuiteListener, IInvok
             if (enabled) {
                 healingEngine = createHealingEngine(config);
                 reportGenerator = new ReportGenerator();
+                healRegistry = new ValidatedHealRegistry();
+
+                // Initialize source code updater if auto-update is enabled
+                AutoUpdateConfig autoUpdateConfig = config.getAutoUpdate();
+                if (autoUpdateConfig != null && autoUpdateConfig.isEnabled()) {
+                    sourceCodeUpdater = new SourceCodeUpdater(autoUpdateConfig);
+                    logger.info("Auto-update enabled with min confidence: {}", autoUpdateConfig.getMinConfidence());
+                }
+
                 logger.info("Intent Healer initialized with mode: {}", config.getMode());
             } else {
                 logger.info("Intent Healer is disabled by configuration");
@@ -102,12 +118,61 @@ public class HealerTestListener implements ITestListener, ISuiteListener, IInvok
     public void onTestSuccess(ITestResult result) {
         if (!enabled) return;
         finalizeTestReport(result, "PASSED");
+
+        // Trigger auto-update for validated heals
+        triggerAutoUpdate(result);
     }
 
     @Override
     public void onTestFailure(ITestResult result) {
         if (!enabled) return;
         finalizeTestReport(result, "FAILED");
+
+        // Discard pending heals for failed test
+        if (healRegistry != null) {
+            healRegistry.discardPending(getTestId(result));
+        }
+    }
+
+    /**
+     * Triggers auto-update for heals validated by this passing test.
+     */
+    private void triggerAutoUpdate(ITestResult result) {
+        if (healRegistry == null || sourceCodeUpdater == null) {
+            return;
+        }
+
+        AutoUpdateConfig autoUpdateConfig = config.getAutoUpdate();
+        if (autoUpdateConfig == null || !autoUpdateConfig.isEnabled()) {
+            return;
+        }
+
+        String testId = getTestId(result);
+        String testName = result.getMethod().getMethodName();
+
+        // Mark pending heals as validated
+        healRegistry.markAsValidated(testId, testName);
+
+        // Get heals for auto-update
+        List<ValidatedHeal> healsToUpdate = healRegistry.getHealsForAutoUpdate(testId, autoUpdateConfig.getMinConfidence());
+        if (healsToUpdate.isEmpty()) {
+            return;
+        }
+
+        logger.info("Applying {} validated heals for test: {}", healsToUpdate.size(), testName);
+
+        // Apply updates
+        List<SourceCodeUpdater.UpdateResult> results = sourceCodeUpdater.applyAllValidated(healsToUpdate);
+        for (SourceCodeUpdater.UpdateResult updateResult : results) {
+            if (updateResult.isSuccess()) {
+                logger.info("Auto-updated: {}", updateResult);
+            } else {
+                logger.warn("Auto-update failed: {}", updateResult);
+            }
+        }
+
+        // Clear processed heals
+        healRegistry.clearValidated(testId);
     }
 
     @Override

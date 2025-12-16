@@ -27,6 +27,7 @@ public final class FailureContext {
     private final IntentMetadata intentMetadata;
     private final Instant timestamp;
     private final Map<String, Object> additionalContext;
+    private final SourceLocation sourceLocation;
 
     @JsonCreator
     public FailureContext(
@@ -43,7 +44,8 @@ public final class FailureContext {
             @JsonProperty("failureKind") FailureKind failureKind,
             @JsonProperty("intentMetadata") IntentMetadata intentMetadata,
             @JsonProperty("timestamp") Instant timestamp,
-            @JsonProperty("additionalContext") Map<String, Object> additionalContext) {
+            @JsonProperty("additionalContext") Map<String, Object> additionalContext,
+            @JsonProperty("sourceLocation") SourceLocation sourceLocation) {
         this.featureName = featureName;
         this.scenarioName = scenarioName;
         this.stepText = Objects.requireNonNull(stepText, "stepText cannot be null");
@@ -58,6 +60,7 @@ public final class FailureContext {
         this.intentMetadata = intentMetadata;
         this.timestamp = timestamp != null ? timestamp : Instant.now();
         this.additionalContext = additionalContext != null ? Map.copyOf(additionalContext) : Map.of();
+        this.sourceLocation = sourceLocation;
     }
 
     public String getFeatureName() {
@@ -116,6 +119,10 @@ public final class FailureContext {
         return additionalContext;
     }
 
+    public SourceLocation getSourceLocation() {
+        return sourceLocation;
+    }
+
     /**
      * Returns true if this failure is an assertion step (Then keyword).
      */
@@ -145,6 +152,7 @@ public final class FailureContext {
         private IntentMetadata intentMetadata;
         private Instant timestamp;
         private Map<String, Object> additionalContext;
+        private SourceLocation sourceLocation;
 
         private Builder() {
         }
@@ -219,6 +227,11 @@ public final class FailureContext {
             return this;
         }
 
+        public Builder sourceLocation(SourceLocation sourceLocation) {
+            this.sourceLocation = sourceLocation;
+            return this;
+        }
+
         public Builder exception(RuntimeException exception) {
             if (exception != null) {
                 this.exceptionType = exception.getClass().getSimpleName();
@@ -247,7 +260,8 @@ public final class FailureContext {
             return new FailureContext(
                     featureName, scenarioName, stepText, stepKeyword, tags,
                     exceptionType, exceptionMessage, originalLocator, actionType,
-                    actionData, failureKind, intentMetadata, timestamp, additionalContext);
+                    actionData, failureKind, intentMetadata, timestamp, additionalContext,
+                    sourceLocation);
         }
     }
 }

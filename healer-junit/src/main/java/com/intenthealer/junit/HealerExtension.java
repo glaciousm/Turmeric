@@ -1,8 +1,12 @@
 package com.intenthealer.junit;
 
+import com.intenthealer.core.config.AutoUpdateConfig;
 import com.intenthealer.core.config.ConfigLoader;
 import com.intenthealer.core.config.HealerConfig;
 import com.intenthealer.core.engine.HealingEngine;
+import com.intenthealer.core.engine.patch.SourceCodeUpdater;
+import com.intenthealer.core.engine.patch.ValidatedHealRegistry;
+import com.intenthealer.core.model.ValidatedHeal;
 import com.intenthealer.report.ReportGenerator;
 import com.intenthealer.report.model.HealReport;
 import com.intenthealer.selenium.driver.HealingWebDriver;
@@ -13,6 +17,7 @@ import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Field;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -44,6 +49,8 @@ public class HealerExtension implements BeforeAllCallback, AfterAllCallback,
     private static final String ENGINE_KEY = "engine";
     private static final String REPORT_KEY = "report";
     private static final String GENERATOR_KEY = "generator";
+    private static final String REGISTRY_KEY = "registry";
+    private static final String UPDATER_KEY = "updater";
 
     @Override
     public void beforeAll(ExtensionContext context) throws Exception {
@@ -60,6 +67,18 @@ public class HealerExtension implements BeforeAllCallback, AfterAllCallback,
 
                 ReportGenerator generator = new ReportGenerator();
                 context.getStore(NAMESPACE).put(GENERATOR_KEY, generator);
+
+                // Initialize validated heal registry
+                ValidatedHealRegistry registry = new ValidatedHealRegistry();
+                context.getStore(NAMESPACE).put(REGISTRY_KEY, registry);
+
+                // Initialize source code updater if auto-update is enabled
+                AutoUpdateConfig autoUpdateConfig = config.getAutoUpdate();
+                if (autoUpdateConfig != null && autoUpdateConfig.isEnabled()) {
+                    SourceCodeUpdater updater = new SourceCodeUpdater(autoUpdateConfig);
+                    context.getStore(NAMESPACE).put(UPDATER_KEY, updater);
+                    logger.info("Auto-update enabled with min confidence: {}", autoUpdateConfig.getMinConfidence());
+                }
 
                 logger.info("Intent Healer initialized with mode: {}", config.getMode());
             } else {
@@ -111,11 +130,65 @@ public class HealerExtension implements BeforeAllCallback, AfterAllCallback,
     @Override
     public void testSuccessful(ExtensionContext context) {
         finalizeReport(context, "PASSED");
+
+        // Trigger auto-update for validated heals
+        triggerAutoUpdate(context);
+    }
+
+    /**
+     * Triggers auto-update for heals validated by this passing test.
+     */
+    private void triggerAutoUpdate(ExtensionContext context) {
+        ValidatedHealRegistry registry = context.getStore(NAMESPACE).get(REGISTRY_KEY, ValidatedHealRegistry.class);
+        SourceCodeUpdater updater = context.getStore(NAMESPACE).get(UPDATER_KEY, SourceCodeUpdater.class);
+        HealerConfig config = context.getStore(NAMESPACE).get(CONFIG_KEY, HealerConfig.class);
+
+        if (registry == null || updater == null || config == null) {
+            return;
+        }
+
+        AutoUpdateConfig autoUpdateConfig = config.getAutoUpdate();
+        if (autoUpdateConfig == null || !autoUpdateConfig.isEnabled()) {
+            return;
+        }
+
+        String testId = context.getUniqueId();
+        String testName = context.getDisplayName();
+
+        // Mark pending heals as validated
+        registry.markAsValidated(testId, testName);
+
+        // Get heals for auto-update
+        List<ValidatedHeal> healsToUpdate = registry.getHealsForAutoUpdate(testId, autoUpdateConfig.getMinConfidence());
+        if (healsToUpdate.isEmpty()) {
+            return;
+        }
+
+        logger.info("Applying {} validated heals for test: {}", healsToUpdate.size(), testName);
+
+        // Apply updates
+        List<SourceCodeUpdater.UpdateResult> results = updater.applyAllValidated(healsToUpdate);
+        for (SourceCodeUpdater.UpdateResult result : results) {
+            if (result.isSuccess()) {
+                logger.info("Auto-updated: {}", result);
+            } else {
+                logger.warn("Auto-update failed: {}", result);
+            }
+        }
+
+        // Clear processed heals
+        registry.clearValidated(testId);
     }
 
     @Override
     public void testFailed(ExtensionContext context, Throwable cause) {
         finalizeReport(context, "FAILED");
+
+        // Discard pending heals for failed test
+        ValidatedHealRegistry registry = context.getStore(NAMESPACE).get(REGISTRY_KEY, ValidatedHealRegistry.class);
+        if (registry != null) {
+            registry.discardPending(context.getUniqueId());
+        }
     }
 
     @Override

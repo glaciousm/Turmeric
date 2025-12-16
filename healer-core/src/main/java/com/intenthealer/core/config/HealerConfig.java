@@ -32,6 +32,9 @@ public class HealerConfig {
     @JsonProperty("circuit_breaker")
     private CircuitBreakerConfig circuitBreaker = new CircuitBreakerConfig();
 
+    @JsonProperty("auto_update")
+    private AutoUpdateConfig autoUpdate = AutoUpdateConfig.disabled();
+
     public HealerConfig() {
     }
 
@@ -99,6 +102,14 @@ public class HealerConfig {
         this.circuitBreaker = circuitBreaker;
     }
 
+    public AutoUpdateConfig getAutoUpdate() {
+        return autoUpdate;
+    }
+
+    public void setAutoUpdate(AutoUpdateConfig autoUpdate) {
+        this.autoUpdate = autoUpdate;
+    }
+
     /**
      * Apply default configuration values.
      */
@@ -109,6 +120,7 @@ public class HealerConfig {
         if (cache == null) cache = new CacheConfig();
         if (report == null) report = new ReportConfig();
         if (circuitBreaker == null) circuitBreaker = new CircuitBreakerConfig();
+        if (autoUpdate == null) autoUpdate = AutoUpdateConfig.disabled();
     }
 
     /**

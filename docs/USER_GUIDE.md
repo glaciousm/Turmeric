@@ -395,6 +395,101 @@ circuit_breaker:
   test_heals_required: 3
 ```
 
+### Auto-Update Configuration
+
+Intent Healer can automatically update your source code when a heal is validated by a passing test. This eliminates repeated healing overhead on subsequent test runs.
+
+```yaml
+# =============================================================================
+# AUTO-UPDATE CONFIGURATION
+# =============================================================================
+
+auto_update:
+  # Master switch for automatic source code updates
+  # When enabled, validated heals will update source files after tests pass
+  enabled: false
+
+  # Minimum confidence threshold for auto-updates (0.0 - 1.0)
+  # Only heals with confidence >= this value will be auto-updated
+  min_confidence: 0.85
+
+  # Require the test to pass before applying updates
+  # When true (recommended), heals are only applied after test validation
+  require_test_pass: true
+
+  # Create backup files before modifying source code
+  # Backups are created with .bak extension
+  backup_enabled: true
+
+  # Directory for storing backup files
+  # Relative to project root or absolute path
+  backup_dir: .healer/backups
+
+  # File patterns to exclude from auto-update
+  # Uses glob patterns (** matches any directory depth)
+  exclude_patterns:
+    - "**/src/test/resources/**"
+    - "**/*IT.java"
+    - "**/generated/**"
+
+  # Dry-run mode - show what would be updated without making changes
+  # Useful for reviewing potential updates before enabling
+  dry_run: false
+```
+
+#### Supported Locator Patterns
+
+Auto-update supports the following locator patterns in your source code:
+
+| Pattern | Example |
+|---------|---------|
+| `By.id()` | `By.id("login-btn")` |
+| `By.xpath()` | `By.xpath("//button[@id='submit']")` |
+| `By.cssSelector()` | `By.cssSelector(".login-form button")` |
+| `By.name()` | `By.name("username")` |
+| `By.className()` | `By.className("btn-primary")` |
+| `By.linkText()` | `By.linkText("Sign In")` |
+| `By.partialLinkText()` | `By.partialLinkText("Sign")` |
+| `By.tagName()` | `By.tagName("button")` |
+| `@FindBy(id=)` | `@FindBy(id = "login-btn")` |
+| `@FindBy(xpath=)` | `@FindBy(xpath = "//button")` |
+| `@FindBy(css=)` | `@FindBy(css = ".login-btn")` |
+
+#### How Auto-Update Works
+
+1. **Test runs** and encounters a broken locator
+2. **Healing Engine** finds a working alternative with confidence score
+3. **Test continues** using the healed locator
+4. **Test passes** - this validates the heal was correct
+5. **Source code updated** - the original locator is replaced with the healed one
+6. **Backup created** - original file saved for rollback if needed
+
+#### Rollback Options
+
+If an auto-update causes issues, you have several rollback options:
+
+```bash
+# Using the CLI
+healer patch rollback
+
+# Manually restore from backup
+cp .healer/backups/LoginTest.java.bak src/test/java/LoginTest.java
+
+# Using git
+git checkout -- src/test/java/LoginTest.java
+```
+
+#### Auto-Update Reports
+
+When auto-updates are applied, a detailed HTML report is generated showing:
+- Files modified
+- Before/after locator values
+- Confidence scores
+- Backup file locations
+- Rollback instructions
+
+Reports are saved to the configured report output directory.
+
 ### Provider-Specific Configuration
 
 #### OpenAI

@@ -1,8 +1,11 @@
 package com.intenthealer.cucumber;
 
+import com.intenthealer.core.config.AutoUpdateConfig;
 import com.intenthealer.core.config.ConfigLoader;
 import com.intenthealer.core.config.HealerConfig;
 import com.intenthealer.core.engine.HealingEngine;
+import com.intenthealer.core.engine.patch.SourceCodeUpdater;
+import com.intenthealer.core.engine.patch.ValidatedHealRegistry;
 import com.intenthealer.core.model.*;
 import com.intenthealer.cucumber.annotations.Intent;
 import com.intenthealer.cucumber.annotations.Outcome;
@@ -16,6 +19,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Method;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
@@ -35,6 +39,8 @@ public class HealerCucumberPlugin implements ConcurrentEventListener {
     private final HealingEngine healingEngine;
     private final LlmOrchestrator llmOrchestrator;
     private final Map<String, ScenarioContext> scenarioContexts = new ConcurrentHashMap<>();
+    private final ValidatedHealRegistry healRegistry;
+    private final SourceCodeUpdater sourceCodeUpdater;
 
     // These need to be set by the test framework
     private static Supplier<WebDriver> webDriverSupplier;
@@ -44,6 +50,16 @@ public class HealerCucumberPlugin implements ConcurrentEventListener {
         this.config = new ConfigLoader().load();
         this.healingEngine = new HealingEngine(config);
         this.llmOrchestrator = new LlmOrchestrator();
+        this.healRegistry = new ValidatedHealRegistry();
+
+        // Initialize source code updater if auto-update is enabled
+        AutoUpdateConfig autoUpdateConfig = config.getAutoUpdate();
+        if (autoUpdateConfig != null && autoUpdateConfig.isEnabled()) {
+            this.sourceCodeUpdater = new SourceCodeUpdater(autoUpdateConfig);
+            logger.info("Auto-update enabled with min confidence: {}", autoUpdateConfig.getMinConfidence());
+        } else {
+            this.sourceCodeUpdater = null;
+        }
 
         logger.info("Intent Healer initialized with mode: {}", config.getMode());
     }
@@ -90,6 +106,52 @@ public class HealerCucumberPlugin implements ConcurrentEventListener {
             logger.info("Scenario '{}' completed with {} heals",
                     context.getScenarioName(), context.getHealCount());
         }
+
+        // Handle auto-update based on test result
+        if (event.getResult().getStatus() == Status.PASSED) {
+            triggerAutoUpdate(scenarioId, context != null ? context.getScenarioName() : "unknown");
+        } else {
+            // Discard pending heals for failed scenario
+            healRegistry.discardPending(scenarioId);
+        }
+    }
+
+    /**
+     * Triggers auto-update for heals validated by this passing scenario.
+     */
+    private void triggerAutoUpdate(String scenarioId, String scenarioName) {
+        if (sourceCodeUpdater == null) {
+            return;
+        }
+
+        AutoUpdateConfig autoUpdateConfig = config.getAutoUpdate();
+        if (autoUpdateConfig == null || !autoUpdateConfig.isEnabled()) {
+            return;
+        }
+
+        // Mark pending heals as validated
+        healRegistry.markAsValidated(scenarioId, scenarioName);
+
+        // Get heals for auto-update
+        List<ValidatedHeal> healsToUpdate = healRegistry.getHealsForAutoUpdate(scenarioId, autoUpdateConfig.getMinConfidence());
+        if (healsToUpdate.isEmpty()) {
+            return;
+        }
+
+        logger.info("Applying {} validated heals for scenario: {}", healsToUpdate.size(), scenarioName);
+
+        // Apply updates
+        List<SourceCodeUpdater.UpdateResult> results = sourceCodeUpdater.applyAllValidated(healsToUpdate);
+        for (SourceCodeUpdater.UpdateResult updateResult : results) {
+            if (updateResult.isSuccess()) {
+                logger.info("Auto-updated: {}", updateResult);
+            } else {
+                logger.warn("Auto-update failed: {}", updateResult);
+            }
+        }
+
+        // Clear processed heals
+        healRegistry.clearValidated(scenarioId);
     }
 
     private void onTestStepStarted(TestStepStarted event) {

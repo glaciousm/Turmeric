@@ -3,6 +3,7 @@ package com.intenthealer.selenium.driver;
 import com.intenthealer.core.config.HealerConfig;
 import com.intenthealer.core.engine.HealingEngine;
 import com.intenthealer.core.model.*;
+import com.intenthealer.core.util.StackTraceAnalyzer;
 import com.intenthealer.selenium.snapshot.SnapshotBuilder;
 import org.openqa.selenium.*;
 import org.openqa.selenium.interactions.Interactive;
@@ -27,6 +28,7 @@ public class HealingWebDriver implements WebDriver, JavascriptExecutor, TakesScr
     private final HealingEngine healingEngine;
     private final SnapshotBuilder snapshotBuilder;
     private final HealerConfig config;
+    private final StackTraceAnalyzer stackTraceAnalyzer;
 
     // Current context for healing (thread-safe)
     private final AtomicReference<IntentContract> currentIntent;
@@ -37,6 +39,7 @@ public class HealingWebDriver implements WebDriver, JavascriptExecutor, TakesScr
         this.healingEngine = healingEngine;
         this.config = config;
         this.snapshotBuilder = new SnapshotBuilder(delegate);
+        this.stackTraceAnalyzer = new StackTraceAnalyzer();
         this.currentIntent = new AtomicReference<>();
         this.currentStepText = new AtomicReference<>();
     }
@@ -197,11 +200,21 @@ public class HealingWebDriver implements WebDriver, JavascriptExecutor, TakesScr
             String stepText = currentStepText.get();
             IntentContract intent = currentIntent.get();
 
+            // Extract source location from stack trace
+            SourceLocation sourceLocation = stackTraceAnalyzer
+                    .extractSourceLocationWithContext(originalException)
+                    .orElse(null);
+
+            if (sourceLocation != null) {
+                logger.debug("Captured source location: {}", sourceLocation.toShortString());
+            }
+
             FailureContext failureContext = FailureContext.builder()
                     .exceptionType(originalException.getClass().getSimpleName())
                     .exceptionMessage(originalException.getMessage())
                     .originalLocator(originalLocator)
                     .stepText(stepText)
+                    .sourceLocation(sourceLocation)
                     .build();
 
             IntentContract intentToUse = intent != null
@@ -240,11 +253,21 @@ public class HealingWebDriver implements WebDriver, JavascriptExecutor, TakesScr
             String stepText = currentStepText.get();
             IntentContract intent = currentIntent.get();
 
+            // Extract source location from stack trace
+            SourceLocation sourceLocation = stackTraceAnalyzer
+                    .extractSourceLocationWithContext(originalException)
+                    .orElse(null);
+
+            if (sourceLocation != null) {
+                logger.debug("Captured source location: {}", sourceLocation.toShortString());
+            }
+
             FailureContext failureContext = FailureContext.builder()
                     .exceptionType(originalException.getClass().getSimpleName())
                     .exceptionMessage(originalException.getMessage())
                     .originalLocator(originalLocator)
                     .stepText(stepText)
+                    .sourceLocation(sourceLocation)
                     .build();
 
             IntentContract intentToUse = intent != null

@@ -25,6 +25,7 @@ public final class HealResult {
     private final Instant timestamp;
     private final Duration duration;
     private final boolean fromCache;
+    private final SourceLocation sourceLocation;
 
     @JsonCreator
     public HealResult(
@@ -38,7 +39,8 @@ public final class HealResult {
             @JsonProperty("failureReason") String failureReason,
             @JsonProperty("timestamp") Instant timestamp,
             @JsonProperty("duration") Duration duration,
-            @JsonProperty("fromCache") boolean fromCache) {
+            @JsonProperty("fromCache") boolean fromCache,
+            @JsonProperty("sourceLocation") SourceLocation sourceLocation) {
         this.id = id != null ? id : UUID.randomUUID().toString();
         this.outcome = Objects.requireNonNull(outcome, "outcome cannot be null");
         this.decision = decision;
@@ -50,6 +52,7 @@ public final class HealResult {
         this.timestamp = timestamp != null ? timestamp : Instant.now();
         this.duration = duration;
         this.fromCache = fromCache;
+        this.sourceLocation = sourceLocation;
     }
 
     public String getId() {
@@ -94,6 +97,10 @@ public final class HealResult {
 
     public boolean isFromCache() {
         return fromCache;
+    }
+
+    public Optional<SourceLocation> getSourceLocation() {
+        return Optional.ofNullable(sourceLocation);
     }
 
     public boolean isSuccess() {
@@ -180,6 +187,7 @@ public final class HealResult {
         private Instant timestamp;
         private Duration duration;
         private boolean fromCache;
+        private SourceLocation sourceLocation;
 
         private Builder() {
         }
@@ -239,9 +247,14 @@ public final class HealResult {
             return this;
         }
 
+        public Builder sourceLocation(SourceLocation sourceLocation) {
+            this.sourceLocation = sourceLocation;
+            return this;
+        }
+
         public HealResult build() {
             return new HealResult(id, outcome, decision, healedElementIndex, healedLocator,
-                    confidence, reasoning, failureReason, timestamp, duration, fromCache);
+                    confidence, reasoning, failureReason, timestamp, duration, fromCache, sourceLocation);
         }
     }
 }

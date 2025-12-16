@@ -40,6 +40,15 @@ public class HealEvent {
     @JsonProperty("cost")
     private CostInfo cost;
 
+    @JsonProperty("source_location")
+    private SourceLocationInfo sourceLocation;
+
+    @JsonProperty("auto_updated")
+    private boolean autoUpdated;
+
+    @JsonProperty("backup_path")
+    private String backupPath;
+
     public String getEventId() { return eventId; }
     public void setEventId(String eventId) { this.eventId = eventId; }
 
@@ -69,6 +78,15 @@ public class HealEvent {
 
     public CostInfo getCost() { return cost; }
     public void setCost(CostInfo cost) { this.cost = cost; }
+
+    public SourceLocationInfo getSourceLocation() { return sourceLocation; }
+    public void setSourceLocation(SourceLocationInfo sourceLocation) { this.sourceLocation = sourceLocation; }
+
+    public boolean isAutoUpdated() { return autoUpdated; }
+    public void setAutoUpdated(boolean autoUpdated) { this.autoUpdated = autoUpdated; }
+
+    public String getBackupPath() { return backupPath; }
+    public void setBackupPath(String backupPath) { this.backupPath = backupPath; }
 
     // Convenience methods for WeeklyHealthReportGenerator
     public String getOutcome() {
@@ -221,5 +239,43 @@ public class HealEvent {
 
         public double getCostUsd() { return costUsd; }
         public void setCostUsd(double costUsd) { this.costUsd = costUsd; }
+    }
+
+    /**
+     * Source code location information for auto-update tracking.
+     */
+    public static class SourceLocationInfo {
+        @JsonProperty("file_path")
+        private String filePath;
+
+        @JsonProperty("class_name")
+        private String className;
+
+        @JsonProperty("method_name")
+        private String methodName;
+
+        @JsonProperty("line_number")
+        private int lineNumber;
+
+        public String getFilePath() { return filePath; }
+        public void setFilePath(String filePath) { this.filePath = filePath; }
+
+        public String getClassName() { return className; }
+        public void setClassName(String className) { this.className = className; }
+
+        public String getMethodName() { return methodName; }
+        public void setMethodName(String methodName) { this.methodName = methodName; }
+
+        public int getLineNumber() { return lineNumber; }
+        public void setLineNumber(int lineNumber) { this.lineNumber = lineNumber; }
+
+        public String toShortString() {
+            String fileName = filePath != null && filePath.contains("/")
+                ? filePath.substring(filePath.lastIndexOf('/') + 1)
+                : (filePath != null && filePath.contains("\\")
+                    ? filePath.substring(filePath.lastIndexOf('\\') + 1)
+                    : filePath);
+            return String.format("%s:%d", fileName != null ? fileName : "unknown", lineNumber);
+        }
     }
 }
