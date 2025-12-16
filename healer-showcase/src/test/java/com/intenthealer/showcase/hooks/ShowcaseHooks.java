@@ -1,7 +1,9 @@
 package com.intenthealer.showcase.hooks;
 
+import com.intenthealer.core.engine.HealingSummary;
 import com.intenthealer.showcase.config.ShowcaseConfig;
 import io.cucumber.java.After;
+import io.cucumber.java.AfterAll;
 import io.cucumber.java.Before;
 import io.cucumber.java.Scenario;
 import org.slf4j.Logger;
@@ -67,8 +69,9 @@ public class ShowcaseHooks {
     }
 
     /**
-     * Print final summary (called via shutdown hook or @AfterAll)
+     * Print final summary after all tests complete.
      */
+    @AfterAll
     public static void printSummary() {
         logger.info("");
         logger.info("════════════════════════════════════════════════════════════════");
@@ -84,5 +87,8 @@ public class ShowcaseHooks {
             logger.info("  ALL TESTS PASSED! Self-healing worked for all {} scenarios.", testCount);
         }
         logger.info("");
+
+        // Print detailed healing summary with actionable fixes
+        HealingSummary.getInstance().printSummary();
     }
 }

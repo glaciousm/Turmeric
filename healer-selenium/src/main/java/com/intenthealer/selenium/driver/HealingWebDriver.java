@@ -2,6 +2,7 @@ package com.intenthealer.selenium.driver;
 
 import com.intenthealer.core.config.HealerConfig;
 import com.intenthealer.core.engine.HealingEngine;
+import com.intenthealer.core.engine.HealingSummary;
 import com.intenthealer.core.model.*;
 import com.intenthealer.core.util.StackTraceAnalyzer;
 import com.intenthealer.selenium.snapshot.SnapshotBuilder;
@@ -231,6 +232,17 @@ public class HealingWebDriver implements WebDriver, JavascriptExecutor, TakesScr
                 LocatorInfo healedLocator = parseLocatorString(healedLocatorStr);
                 By healedBy = locatorInfoToBy(healedLocator);
                 logger.info("Healed locator: {} -> {}", by, healedBy);
+
+                // Record heal for summary report
+                HealingSummary.getInstance().recordHeal(
+                    effectiveStepText,
+                    by.toString(),
+                    healedBy.toString(),
+                    result.getConfidence(),
+                    sourceLocation != null ? sourceLocation.getFilePath() : null,
+                    sourceLocation != null ? sourceLocation.getLineNumber() : 0
+                );
+
                 return wrapElement(delegate.findElement(healedBy), healedBy);
             }
 
@@ -287,6 +299,17 @@ public class HealingWebDriver implements WebDriver, JavascriptExecutor, TakesScr
                 LocatorInfo healedLocator = parseLocatorString(healedLocatorStr);
                 By healedBy = locatorInfoToBy(healedLocator);
                 logger.info("Healed locator: {} -> {}", by, healedBy);
+
+                // Record heal for summary report
+                HealingSummary.getInstance().recordHeal(
+                    effectiveStepText,
+                    by.toString(),
+                    healedBy.toString(),
+                    result.getConfidence(),
+                    sourceLocation != null ? sourceLocation.getFilePath() : null,
+                    sourceLocation != null ? sourceLocation.getLineNumber() : 0
+                );
+
                 return wrapElements(delegate.findElements(healedBy), healedBy);
             }
 
