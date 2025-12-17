@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Supplier;
 
 /**
  * Orchestrates LLM calls with fallback support and error handling.
@@ -60,13 +61,17 @@ public class LlmOrchestrator {
             IntentContract intent,
             LlmConfig config) {
 
-        // Try primary provider
+        // Try primary provider with retry
         LlmProvider primaryProvider = getProvider(config.getProvider());
         if (primaryProvider != null) {
             try {
-                return primaryProvider.evaluateCandidates(failure, snapshot, intent, config);
+                return executeWithRetry(
+                        () -> primaryProvider.evaluateCandidates(failure, snapshot, intent, config),
+                        config.getMaxRetries(),
+                        config.getProvider()
+                );
             } catch (LlmException e) {
-                logger.warn("Primary LLM provider failed: {}", e.getMessage());
+                logger.warn("Primary LLM provider failed after retries: {}", e.getMessage());
                 // Fall through to try fallbacks
             }
         }
@@ -80,7 +85,11 @@ public class LlmOrchestrator {
                             fallbackConfig.getProvider(), fallbackConfig.getModel());
 
                     LlmConfig fallbackLlmConfig = createFallbackConfig(config, fallbackConfig);
-                    return fallbackProvider.evaluateCandidates(failure, snapshot, intent, fallbackLlmConfig);
+                    return executeWithRetry(
+                            () -> fallbackProvider.evaluateCandidates(failure, snapshot, intent, fallbackLlmConfig),
+                            fallbackLlmConfig.getMaxRetries(),
+                            fallbackConfig.getProvider()
+                    );
                 } catch (LlmException e) {
                     logger.warn("Fallback provider {} failed: {}",
                             fallbackConfig.getProvider(), e.getMessage());
@@ -139,5 +148,83 @@ public class LlmOrchestrator {
         config.setMaxTokensPerRequest(original.getMaxTokensPerRequest());
         config.setRequireReasoning(original.isRequireReasoning());
         return config;
+    }
+
+    /**
+     * Execute an LLM operation with exponential backoff retry on rate limiting.
+     *
+     * @param operation   The LLM operation to execute
+     * @param maxRetries  Maximum number of retry attempts (0 = no retries)
+     * @param providerName Provider name for logging
+     * @return The result of the operation
+     * @throws LlmException if all attempts fail
+     */
+    private <T> T executeWithRetry(Supplier<T> operation, int maxRetries, String providerName) {
+        int attempts = 0;
+        int maxAttempts = Math.max(1, maxRetries + 1); // At least 1 attempt
+        long baseDelayMs = 1000; // Start with 1 second
+        long maxDelayMs = 32000; // Cap at 32 seconds
+        LlmException lastException = null;
+
+        while (attempts < maxAttempts) {
+            try {
+                return operation.get();
+            } catch (LlmException e) {
+                lastException = e;
+                attempts++;
+
+                // Only retry on rate limiting errors
+                if (!isRetryable(e)) {
+                    logger.debug("Non-retryable error from {}: {}", providerName, e.getMessage());
+                    throw e;
+                }
+
+                if (attempts >= maxAttempts) {
+                    logger.warn("All {} retry attempts exhausted for {}", maxAttempts, providerName);
+                    throw e;
+                }
+
+                // Calculate exponential backoff delay with jitter
+                long delay = Math.min(baseDelayMs * (1L << (attempts - 1)), maxDelayMs);
+                long jitter = (long) (delay * 0.1 * Math.random()); // Add 0-10% jitter
+                delay += jitter;
+
+                logger.info("Rate limited by {}. Attempt {}/{}, retrying in {}ms...",
+                        providerName, attempts, maxAttempts, delay);
+
+                try {
+                    Thread.sleep(delay);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw new LlmException("Retry interrupted", ie, providerName, "unknown");
+                }
+            }
+        }
+
+        // Should not reach here, but just in case
+        throw lastException != null ? lastException :
+                new LlmException("Operation failed with no exception", providerName, "unknown");
+    }
+
+    /**
+     * Determines if an exception is retryable (rate limiting or transient errors).
+     */
+    private boolean isRetryable(LlmException e) {
+        if (e.isRateLimited()) {
+            return true;
+        }
+
+        // Also retry on common transient errors
+        String msg = e.getMessage();
+        if (msg != null) {
+            String lowerMsg = msg.toLowerCase();
+            return lowerMsg.contains("timeout") ||
+                   lowerMsg.contains("connection reset") ||
+                   lowerMsg.contains("service unavailable") ||
+                   lowerMsg.contains("502") ||
+                   lowerMsg.contains("503") ||
+                   lowerMsg.contains("504");
+        }
+        return false;
     }
 }

@@ -30,12 +30,18 @@ public class CircuitBreaker {
     private volatile Instant lastFailureTime;
     private volatile Instant openedAt;
 
+    // Cost tracking
+    private volatile double dailyCost = 0.0;
+    private volatile Instant costResetTime;
+    private volatile boolean openedDueToCost = false;
+
     public CircuitBreaker(CircuitBreakerConfig config) {
         this.config = config != null ? config : new CircuitBreakerConfig();
         this.state = new AtomicReference<>(CircuitState.CLOSED);
         this.failureCount = new AtomicInteger(0);
         this.successCount = new AtomicInteger(0);
         this.halfOpenAttempts = new AtomicInteger(0);
+        this.costResetTime = Instant.now();
     }
 
     public CircuitBreaker() {
@@ -51,6 +57,16 @@ public class CircuitBreaker {
         }
 
         updateState();
+        resetDailyCostIfNeeded();
+
+        // Check cost limit
+        if (dailyCost >= config.getDailyCostLimitUsd() && config.getDailyCostLimitUsd() > 0) {
+            if (state.get() != CircuitState.OPEN) {
+                openCircuitDueToCost();
+            }
+            logger.debug("Circuit is OPEN due to cost limit (${} >= ${})", dailyCost, config.getDailyCostLimitUsd());
+            return false;
+        }
 
         CircuitState currentState = state.get();
         switch (currentState) {
@@ -76,12 +92,20 @@ public class CircuitBreaker {
      * Record a successful heal.
      */
     public void recordSuccess() {
+        recordSuccess(0.0);
+    }
+
+    /**
+     * Record a successful heal with cost.
+     */
+    public void recordSuccess(double costUsd) {
         if (!config.isEnabled()) {
             return;
         }
 
+        addCost(costUsd);
         int successes = successCount.incrementAndGet();
-        logger.debug("Recorded heal success (count: {})", successes);
+        logger.debug("Recorded heal success (count: {}, cost: ${})", successes, costUsd);
 
         CircuitState currentState = state.get();
         if (currentState == CircuitState.HALF_OPEN) {
@@ -102,14 +126,22 @@ public class CircuitBreaker {
      * Record a failed heal.
      */
     public void recordFailure() {
+        recordFailure(0.0);
+    }
+
+    /**
+     * Record a failed heal with cost.
+     */
+    public void recordFailure(double costUsd) {
         if (!config.isEnabled()) {
             return;
         }
 
+        addCost(costUsd);
         int failures = failureCount.incrementAndGet();
         lastFailureTime = Instant.now();
         successCount.set(0); // Reset success count on failure
-        logger.debug("Recorded heal failure (count: {})", failures);
+        logger.debug("Recorded heal failure (count: {}, cost: ${})", failures, costUsd);
 
         CircuitState currentState = state.get();
         if (currentState == CircuitState.HALF_OPEN) {
@@ -168,7 +200,46 @@ public class CircuitBreaker {
         successCount.set(0);
         halfOpenAttempts.set(0);
         openedAt = null;
+        openedDueToCost = false;
         logger.info("Circuit breaker manually reset");
+    }
+
+    /**
+     * Reset the daily cost counter.
+     */
+    public void resetDailyCost() {
+        dailyCost = 0.0;
+        costResetTime = Instant.now();
+        openedDueToCost = false;
+        logger.info("Daily cost reset");
+    }
+
+    /**
+     * Get the current daily cost.
+     */
+    public double getDailyCost() {
+        resetDailyCostIfNeeded();
+        return dailyCost;
+    }
+
+    /**
+     * Add cost to the daily total.
+     */
+    public void addCost(double costUsd) {
+        if (costUsd > 0) {
+            resetDailyCostIfNeeded();
+            synchronized (this) {
+                dailyCost += costUsd;
+            }
+            logger.debug("Added ${} to daily cost (total: ${})", costUsd, dailyCost);
+        }
+    }
+
+    /**
+     * Check if circuit was opened due to cost limit.
+     */
+    public boolean isOpenedDueToCost() {
+        return openedDueToCost && state.get() == CircuitState.OPEN;
     }
 
     /**
@@ -199,8 +270,47 @@ public class CircuitBreaker {
         CircuitState previous = state.getAndSet(CircuitState.OPEN);
         openedAt = Instant.now();
         halfOpenAttempts.set(0);
+        openedDueToCost = false;
         if (previous != CircuitState.OPEN) {
             logger.warn("Circuit breaker OPENED due to {} failures", failureCount.get());
+        }
+    }
+
+    private void openCircuitDueToCost() {
+        CircuitState previous = state.getAndSet(CircuitState.OPEN);
+        openedAt = Instant.now();
+        halfOpenAttempts.set(0);
+        openedDueToCost = true;
+        if (previous != CircuitState.OPEN) {
+            logger.warn("Circuit breaker OPENED due to cost limit (${} >= ${})",
+                    dailyCost, config.getDailyCostLimitUsd());
+        }
+    }
+
+    private void resetDailyCostIfNeeded() {
+        if (costResetTime == null) {
+            costResetTime = Instant.now();
+            return;
+        }
+        Duration elapsed = Duration.between(costResetTime, Instant.now());
+        if (elapsed.toHours() >= 24) {
+            synchronized (this) {
+                // Double-check after acquiring lock
+                elapsed = Duration.between(costResetTime, Instant.now());
+                if (elapsed.toHours() >= 24) {
+                    dailyCost = 0.0;
+                    costResetTime = Instant.now();
+                    if (openedDueToCost) {
+                        openedDueToCost = false;
+                        // Transition to half-open when cost resets
+                        if (state.get() == CircuitState.OPEN) {
+                            state.set(CircuitState.HALF_OPEN);
+                            halfOpenAttempts.set(0);
+                            logger.info("Daily cost reset, circuit transitioning to HALF_OPEN");
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -225,7 +335,10 @@ public class CircuitBreaker {
                 successCount.get(),
                 lastFailureTime,
                 openedAt,
-                getTimeUntilClose()
+                getTimeUntilClose(),
+                dailyCost,
+                config.getDailyCostLimitUsd(),
+                openedDueToCost
         );
     }
 
@@ -238,6 +351,9 @@ public class CircuitBreaker {
             int successCount,
             Instant lastFailureTime,
             Instant openedAt,
-            Duration timeUntilClose
+            Duration timeUntilClose,
+            double dailyCost,
+            double dailyCostLimit,
+            boolean openedDueToCost
     ) {}
 }

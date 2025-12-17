@@ -1,6 +1,8 @@
 package com.intenthealer.core.config;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.intenthealer.core.engine.notification.NotificationConfig;
+import com.intenthealer.core.engine.sharing.PatternSharingService.SharingConfig;
 import com.intenthealer.core.model.HealPolicy;
 
 /**
@@ -34,6 +36,12 @@ public class HealerConfig {
 
     @JsonProperty("auto_update")
     private AutoUpdateConfig autoUpdate = AutoUpdateConfig.disabled();
+
+    @JsonProperty("notification")
+    private NotificationConfig notification = new NotificationConfig();
+
+    @JsonProperty("sharing")
+    private SharingConfig sharing = SharingConfig.defaults();
 
     public HealerConfig() {
     }
@@ -110,6 +118,22 @@ public class HealerConfig {
         this.autoUpdate = autoUpdate;
     }
 
+    public NotificationConfig getNotification() {
+        return notification;
+    }
+
+    public void setNotification(NotificationConfig notification) {
+        this.notification = notification;
+    }
+
+    public SharingConfig getSharing() {
+        return sharing;
+    }
+
+    public void setSharing(SharingConfig sharing) {
+        this.sharing = sharing;
+    }
+
     /**
      * Apply default configuration values.
      */
@@ -121,6 +145,8 @@ public class HealerConfig {
         if (report == null) report = new ReportConfig();
         if (circuitBreaker == null) circuitBreaker = new CircuitBreakerConfig();
         if (autoUpdate == null) autoUpdate = AutoUpdateConfig.disabled();
+        if (notification == null) notification = new NotificationConfig();
+        if (sharing == null) sharing = SharingConfig.defaults();
     }
 
     /**

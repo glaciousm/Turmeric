@@ -1,5 +1,6 @@
 package com.intenthealer.cli.commands;
 
+import com.intenthealer.cli.util.CliOutput;
 import com.intenthealer.core.config.ConfigLoader;
 import com.intenthealer.core.config.HealerConfig;
 
@@ -18,62 +19,58 @@ public class ConfigCommand {
     public void show() {
         HealerConfig config = new ConfigLoader().load();
 
-        System.out.println();
-        System.out.println("═══════════════════════════════════════════════════════════════");
-        System.out.println("                   HEALER CONFIGURATION                         ");
-        System.out.println("═══════════════════════════════════════════════════════════════");
-        System.out.println();
+        CliOutput.header("HEALER CONFIGURATION");
 
-        System.out.println("General:");
-        System.out.printf("  Mode:             %s%n", config.getMode());
-        System.out.printf("  Enabled:          %s%n", config.isEnabled());
-        System.out.println();
+        CliOutput.println("General:");
+        CliOutput.printf("  Mode:             %s%n", config.getMode());
+        CliOutput.printf("  Enabled:          %s%n", config.isEnabled());
+        CliOutput.println();
 
         if (config.getLlm() != null) {
-            System.out.println("LLM:");
-            System.out.printf("  Provider:         %s%n", config.getLlm().getProvider());
-            System.out.printf("  Model:            %s%n", config.getLlm().getModel());
-            System.out.printf("  Timeout:          %ds%n", config.getLlm().getTimeoutSeconds());
-            System.out.printf("  Max Retries:      %d%n", config.getLlm().getMaxRetries());
-            System.out.println();
+            CliOutput.println("LLM:");
+            CliOutput.printf("  Provider:         %s%n", config.getLlm().getProvider());
+            CliOutput.printf("  Model:            %s%n", config.getLlm().getModel());
+            CliOutput.printf("  Timeout:          %ds%n", config.getLlm().getTimeoutSeconds());
+            CliOutput.printf("  Max Retries:      %d%n", config.getLlm().getMaxRetries());
+            CliOutput.println();
         }
 
         if (config.getGuardrails() != null) {
-            System.out.println("Guardrails:");
-            System.out.printf("  Min Confidence:   %.2f%n", config.getGuardrails().getMinConfidence());
-            System.out.printf("  Max Heal Attempts: %d%n", config.getGuardrails().getMaxHealAttemptsPerStep());
+            CliOutput.println("Guardrails:");
+            CliOutput.printf("  Min Confidence:   %.2f%n", config.getGuardrails().getMinConfidence());
+            CliOutput.printf("  Max Heal Attempts: %d%n", config.getGuardrails().getMaxHealAttemptsPerStep());
             if (config.getGuardrails().getForbiddenKeywords() != null) {
-                System.out.printf("  Forbidden Keywords: %d configured%n",
+                CliOutput.printf("  Forbidden Keywords: %d configured%n",
                         config.getGuardrails().getForbiddenKeywords().size());
             }
-            System.out.println();
+            CliOutput.println();
         }
 
         if (config.getCache() != null) {
-            System.out.println("Cache:");
-            System.out.printf("  Enabled:          %s%n", config.getCache().isEnabled());
-            System.out.printf("  TTL:              %d hours%n", config.getCache().getTtlHours());
-            System.out.printf("  Max Entries:      %d%n", config.getCache().getMaxEntries());
-            System.out.printf("  Storage:          %s%n", config.getCache().getStorage());
-            System.out.println();
+            CliOutput.println("Cache:");
+            CliOutput.printf("  Enabled:          %s%n", config.getCache().isEnabled());
+            CliOutput.printf("  TTL:              %d hours%n", config.getCache().getTtlHours());
+            CliOutput.printf("  Max Entries:      %d%n", config.getCache().getMaxEntries());
+            CliOutput.printf("  Storage:          %s%n", config.getCache().getStorage());
+            CliOutput.println();
         }
 
         if (config.getReport() != null) {
-            System.out.println("Reports:");
-            System.out.printf("  Enabled:          %s%n", config.getReport().isEnabled());
-            System.out.printf("  Output Dir:       %s%n", config.getReport().getOutputDir());
-            System.out.printf("  Format:           %s%n", config.getReport().getFormat());
-            System.out.println();
+            CliOutput.println("Reports:");
+            CliOutput.printf("  Enabled:          %s%n", config.getReport().isEnabled());
+            CliOutput.printf("  Output Dir:       %s%n", config.getReport().getOutputDir());
+            CliOutput.printf("  Format:           %s%n", config.getReport().getFormat());
+            CliOutput.println();
         }
 
-        System.out.println("═══════════════════════════════════════════════════════════════");
+        CliOutput.divider();
     }
 
     /**
      * Validate configuration.
      */
     public void validate() {
-        System.out.println("Validating configuration...");
+        CliOutput.println("Validating configuration...");
 
         try {
             HealerConfig config = new ConfigLoader().load();
@@ -83,45 +80,45 @@ public class ConfigCommand {
 
             // Check LLM configuration
             if (config.getLlm() == null) {
-                System.out.println("❌ LLM configuration is missing");
+                CliOutput.error("LLM configuration is missing");
                 valid = false;
             } else {
                 if (config.getLlm().getProvider() == null || config.getLlm().getProvider().isEmpty()) {
-                    System.out.println("❌ LLM provider is not set");
+                    CliOutput.error("LLM provider is not set");
                     valid = false;
                 }
                 if (config.getLlm().getApiKey() == null || config.getLlm().getApiKey().isEmpty()) {
-                    System.out.println("⚠️  LLM API key is not set (will need to be set via env var)");
+                    CliOutput.warn("LLM API key is not set (will need to be set via env var)");
                     warnings++;
                 }
             }
 
             // Check guardrails
             if (config.getGuardrails() == null) {
-                System.out.println("⚠️  Guardrails configuration missing, using defaults");
+                CliOutput.warn("Guardrails configuration missing, using defaults");
                 warnings++;
             } else {
                 if (config.getGuardrails().getMinConfidence() < 0.5) {
-                    System.out.println("⚠️  Min confidence is very low: " +
+                    CliOutput.warn("Min confidence is very low: " +
                             config.getGuardrails().getMinConfidence());
                     warnings++;
                 }
             }
 
             // Summary
-            System.out.println();
+            CliOutput.println();
             if (valid) {
                 if (warnings > 0) {
-                    System.out.println("✅ Configuration is valid with " + warnings + " warning(s)");
+                    CliOutput.println("Configuration is valid with " + warnings + " warning(s)");
                 } else {
-                    System.out.println("✅ Configuration is valid");
+                    CliOutput.println("Configuration is valid");
                 }
             } else {
-                System.out.println("❌ Configuration has errors");
+                CliOutput.error("Configuration has errors");
             }
 
         } catch (Exception e) {
-            System.out.println("❌ Failed to load configuration: " + e.getMessage());
+            CliOutput.error("Failed to load configuration: " + e.getMessage());
         }
     }
 
@@ -132,8 +129,8 @@ public class ConfigCommand {
         Path path = Path.of(outputPath);
 
         if (Files.exists(path)) {
-            System.out.println("Configuration file already exists: " + outputPath);
-            System.out.println("Use --force to overwrite");
+            CliOutput.println("Configuration file already exists: " + outputPath);
+            CliOutput.println("Use --force to overwrite");
             return;
         }
 
@@ -182,12 +179,12 @@ public class ConfigCommand {
         Files.createDirectories(path.getParent() != null ? path.getParent() : Path.of("."));
         Files.writeString(path, defaultConfig);
 
-        System.out.println("✅ Created configuration file: " + outputPath);
-        System.out.println();
-        System.out.println("Next steps:");
-        System.out.println("  1. Set your LLM API key: export OPENAI_API_KEY=your-key");
-        System.out.println("  2. Customize the configuration as needed");
-        System.out.println("  3. Run your tests with the healer enabled");
+        CliOutput.println("Created configuration file: " + outputPath);
+        CliOutput.println();
+        CliOutput.println("Next steps:");
+        CliOutput.println("  1. Set your LLM API key: export OPENAI_API_KEY=your-key");
+        CliOutput.println("  2. Customize the configuration as needed");
+        CliOutput.println("  3. Run your tests with the healer enabled");
     }
 
     /**
@@ -201,24 +198,24 @@ public class ConfigCommand {
                 ".healer/config.yml"
         };
 
-        System.out.println("Checking configuration locations...");
-        System.out.println();
+        CliOutput.println("Checking configuration locations...");
+        CliOutput.println();
 
         boolean found = false;
         for (String location : locations) {
             Path path = Path.of(location);
             if (Files.exists(path)) {
-                System.out.println("✅ Found: " + path.toAbsolutePath());
+                CliOutput.println("Found: " + path.toAbsolutePath());
                 found = true;
             } else {
-                System.out.println("   Not found: " + location);
+                CliOutput.println("   Not found: " + location);
             }
         }
 
-        System.out.println();
+        CliOutput.println();
         if (!found) {
-            System.out.println("No configuration file found. Using defaults.");
-            System.out.println("Run 'healer config init' to create one.");
+            CliOutput.println("No configuration file found. Using defaults.");
+            CliOutput.println("Run 'healer config init' to create one.");
         }
     }
 }

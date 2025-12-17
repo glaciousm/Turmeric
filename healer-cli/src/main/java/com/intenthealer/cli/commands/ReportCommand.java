@@ -1,5 +1,6 @@
 package com.intenthealer.cli.commands;
 
+import com.intenthealer.cli.util.CliOutput;
 import com.intenthealer.report.ReportGenerator;
 import com.intenthealer.report.model.HealEvent;
 import com.intenthealer.report.model.HealReport;
@@ -31,15 +32,15 @@ public class ReportCommand {
      * Generate a report from JSON heal events.
      */
     public void generate(String inputDir, String outputPath, String format) throws IOException {
-        System.out.println("Generating report...");
-        System.out.println("  Input: " + inputDir);
-        System.out.println("  Output: " + outputPath);
-        System.out.println("  Format: " + format);
+        CliOutput.println("Generating report...");
+        CliOutput.println("  Input: " + inputDir);
+        CliOutput.println("  Output: " + outputPath);
+        CliOutput.println("  Format: " + format);
 
         // Find all JSON report files
         Path inputPath = Path.of(inputDir);
         if (!Files.exists(inputPath)) {
-            System.err.println("Error: Input directory does not exist: " + inputDir);
+            CliOutput.error("Input directory does not exist: " + inputDir);
             return;
         }
 
@@ -49,20 +50,20 @@ public class ReportCommand {
                 .toList();
 
         if (reportFiles.isEmpty()) {
-            System.out.println("No heal report files found in " + inputDir);
+            CliOutput.println("No heal report files found in " + inputDir);
             return;
         }
 
-        System.out.println("Found " + reportFiles.size() + " report file(s)");
+        CliOutput.println("Found " + reportFiles.size() + " report file(s)");
 
         // Generate combined report
         if (format.equalsIgnoreCase("html") || format.equalsIgnoreCase("both")) {
             String htmlPath = outputPath.endsWith(".html") ? outputPath : outputPath + ".html";
             reportGenerator.generateHtmlFromDirectory(inputDir, htmlPath);
-            System.out.println("Generated HTML report: " + htmlPath);
+            CliOutput.println("Generated HTML report: " + htmlPath);
         }
 
-        System.out.println("Report generation complete.");
+        CliOutput.println("Report generation complete.");
     }
 
     /**
@@ -71,14 +72,14 @@ public class ReportCommand {
     public void summary(String reportDir) throws IOException {
         Path dirPath = Path.of(reportDir);
         if (!Files.exists(dirPath)) {
-            System.err.println("Report directory not found: " + reportDir);
+            CliOutput.error("Report directory not found: " + reportDir);
             return;
         }
 
         List<HealReport> reports = loadReports(dirPath);
 
         if (reports.isEmpty()) {
-            System.out.println("No heal reports found in " + reportDir);
+            CliOutput.println("No heal reports found in " + reportDir);
             return;
         }
 
@@ -104,25 +105,21 @@ public class ReportCommand {
         }
 
         // Print summary
-        System.out.println();
-        System.out.println("═══════════════════════════════════════════════════════════════");
-        System.out.println("                     HEAL REPORT SUMMARY                        ");
-        System.out.println("═══════════════════════════════════════════════════════════════");
-        System.out.println();
-        System.out.printf("  Total Reports:     %d%n", reports.size());
-        System.out.printf("  Total Heal Attempts: %d%n", totalAttempts);
-        System.out.println();
-        System.out.println("  Outcomes:");
-        System.out.printf("    ✅ Success:      %d (%.1f%%)%n",
+        CliOutput.header("HEAL REPORT SUMMARY");
+        CliOutput.printf("  Total Reports:     %d%n", reports.size());
+        CliOutput.printf("  Total Heal Attempts: %d%n", totalAttempts);
+        CliOutput.println();
+        CliOutput.println("  Outcomes:");
+        CliOutput.printf("    Success:      %d (%.1f%%)%n",
                 successCount, totalAttempts > 0 ? 100.0 * successCount / totalAttempts : 0);
-        System.out.printf("    🚫 Refused:      %d (%.1f%%)%n",
+        CliOutput.printf("    Refused:      %d (%.1f%%)%n",
                 refusedCount, totalAttempts > 0 ? 100.0 * refusedCount / totalAttempts : 0);
-        System.out.printf("    ❌ Failed:       %d (%.1f%%)%n",
+        CliOutput.printf("    Failed:       %d (%.1f%%)%n",
                 failedCount, totalAttempts > 0 ? 100.0 * failedCount / totalAttempts : 0);
-        System.out.println();
-        System.out.printf("  Total LLM Cost:    $%.4f%n", totalCost);
-        System.out.println();
-        System.out.println("═══════════════════════════════════════════════════════════════");
+        CliOutput.println();
+        CliOutput.printf("  Total LLM Cost:    $%.4f%n", totalCost);
+        CliOutput.println();
+        CliOutput.divider();
     }
 
     /**
@@ -131,20 +128,20 @@ public class ReportCommand {
     public void list(String reportDir, int limit) throws IOException {
         Path dirPath = Path.of(reportDir);
         if (!Files.exists(dirPath)) {
-            System.err.println("Report directory not found: " + reportDir);
+            CliOutput.error("Report directory not found: " + reportDir);
             return;
         }
 
         List<HealReport> reports = loadReports(dirPath);
 
         if (reports.isEmpty()) {
-            System.out.println("No heal reports found.");
+            CliOutput.println("No heal reports found.");
             return;
         }
 
-        System.out.println();
-        System.out.println("Recent Heal Events:");
-        System.out.println("─".repeat(80));
+        CliOutput.println();
+        CliOutput.println("Recent Heal Events:");
+        CliOutput.println("-".repeat(80));
 
         int count = 0;
         for (HealReport report : reports) {
@@ -152,27 +149,27 @@ public class ReportCommand {
                 if (count >= limit) break;
 
                 String icon = switch (event.getOutcome()) {
-                    case "SUCCESS" -> "✅";
-                    case "REFUSED" -> "🚫";
-                    default -> "❌";
+                    case "SUCCESS" -> "[OK]";
+                    case "REFUSED" -> "[--]";
+                    default -> "[!!]";
                 };
 
-                System.out.printf("%s [%s] %s%n",
+                CliOutput.printf("%s [%s] %s%n",
                         icon,
                         formatTime(event.getTimestamp()),
                         truncate(event.getStepText(), 50));
-                System.out.printf("   %s -> %s%n",
+                CliOutput.printf("   %s -> %s%n",
                         event.getOriginalLocator(),
                         event.getHealedLocator() != null && !event.getHealedLocator().isEmpty()
                             ? event.getHealedLocator() : "N/A");
-                System.out.println();
+                CliOutput.println();
 
                 count++;
             }
             if (count >= limit) break;
         }
 
-        System.out.printf("Showing %d of %d total events%n", count, getTotalEvents(reports));
+        CliOutput.printf("Showing %d of %d total events%n", count, getTotalEvents(reports));
     }
 
     private List<HealReport> loadReports(Path dirPath) throws IOException {

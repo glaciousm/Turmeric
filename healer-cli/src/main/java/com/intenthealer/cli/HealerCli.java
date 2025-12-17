@@ -3,6 +3,7 @@ package com.intenthealer.cli;
 import com.intenthealer.cli.commands.CacheCommand;
 import com.intenthealer.cli.commands.ConfigCommand;
 import com.intenthealer.cli.commands.ReportCommand;
+import com.intenthealer.cli.util.CliOutput;
 import com.intenthealer.core.config.ConfigLoader;
 import com.intenthealer.core.config.HealerConfig;
 import com.intenthealer.report.ReportGenerator;
@@ -33,13 +34,13 @@ public class HealerCli {
                 case "version" -> printVersion();
                 case "help", "-h", "--help" -> printUsage();
                 default -> {
-                    System.err.println("Unknown command: " + command);
+                    CliOutput.error("Unknown command: " + command);
                     printUsage();
                     System.exit(1);
                 }
             }
         } catch (Exception e) {
-            System.err.println("Error: " + e.getMessage());
+            CliOutput.error("Error: " + e.getMessage());
             System.exit(1);
         }
     }
@@ -59,7 +60,7 @@ public class HealerCli {
             }
             case "where" -> configCmd.where();
             default -> {
-                System.err.println("Unknown config subcommand: " + args[0]);
+                CliOutput.error("Unknown config subcommand: " + args[0]);
                 printConfigUsage();
             }
         }
@@ -87,13 +88,13 @@ public class HealerCli {
             }
             case "import" -> {
                 if (args.length < 2) {
-                    System.err.println("Usage: healer cache import <file>");
+                    CliOutput.error("Usage: healer cache import <file>");
                     return;
                 }
                 cacheCmd.importCache(args[1]);
             }
             default -> {
-                System.err.println("Unknown cache subcommand: " + args[0]);
+                CliOutput.error("Unknown cache subcommand: " + args[0]);
                 printCacheUsage();
             }
         }
@@ -128,19 +129,19 @@ public class HealerCli {
                 reportCmd.generate(inputDir, outputPath, format);
             }
             default -> {
-                System.err.println("Unknown report subcommand: " + args[0]);
+                CliOutput.error("Unknown report subcommand: " + args[0]);
                 printReportUsage();
             }
         }
     }
 
     private static void printVersion() {
-        System.out.println("Intent Healer v1.0.0-SNAPSHOT");
-        System.out.println("LLM-powered semantic test recovery for Selenium + Cucumber");
+        CliOutput.println("Intent Healer v1.0.0-SNAPSHOT");
+        CliOutput.println("LLM-powered semantic test recovery for Selenium + Cucumber");
     }
 
     private static void printUsage() {
-        System.out.println("""
+        CliOutput.println("""
             ╔═══════════════════════════════════════════════════════════════╗
             ║                    INTENT HEALER CLI                          ║
             ║         LLM-Powered Semantic Test Recovery                    ║
@@ -171,7 +172,7 @@ public class HealerCli {
     }
 
     private static void printConfigUsage() {
-        System.out.println("""
+        CliOutput.println("""
             Usage: healer config <subcommand>
 
             Subcommands:
@@ -183,7 +184,7 @@ public class HealerCli {
     }
 
     private static void printCacheUsage() {
-        System.out.println("""
+        CliOutput.println("""
             Usage: healer cache <subcommand>
 
             Subcommands:
@@ -196,7 +197,7 @@ public class HealerCli {
     }
 
     private static void printReportUsage() {
-        System.out.println("""
+        CliOutput.println("""
             Usage: healer report <subcommand>
 
             Subcommands:

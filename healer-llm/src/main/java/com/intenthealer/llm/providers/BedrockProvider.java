@@ -371,7 +371,7 @@ public class BedrockProvider implements LlmProvider {
             byte[] hash = digest.digest(data.getBytes(StandardCharsets.UTF_8));
             return HexFormat.of().formatHex(hash);
         } catch (Exception e) {
-            throw new RuntimeException("SHA-256 hashing failed", e);
+            throw LlmException.cryptoError(getProviderName(), "SHA-256 hashing", e);
         }
     }
 
@@ -381,7 +381,7 @@ public class BedrockProvider implements LlmProvider {
             mac.init(new SecretKeySpec(key, "HmacSHA256"));
             return mac.doFinal(data.getBytes(StandardCharsets.UTF_8));
         } catch (Exception e) {
-            throw new RuntimeException("HMAC-SHA256 failed", e);
+            throw LlmException.cryptoError(getProviderName(), "HMAC-SHA256", e);
         }
     }
 

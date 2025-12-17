@@ -525,13 +525,212 @@ llm:
   # Uses AWS credentials from environment or ~/.aws/credentials
 ```
 
-#### Ollama (Local)
+#### Ollama (Local LLM)
+
+Ollama allows you to run LLMs locally without any API keys or cloud costs. This is ideal for:
+- Development and testing without API costs
+- Air-gapped environments
+- Privacy-sensitive applications
+- Unlimited usage without rate limits
+
+##### Installing Ollama
+
+**Windows:**
+```powershell
+# Using winget (recommended)
+winget install Ollama.Ollama
+
+# Or download from: https://ollama.ai/download/windows
+```
+
+**macOS:**
+```bash
+# Using Homebrew
+brew install ollama
+
+# Or download from: https://ollama.ai/download/mac
+```
+
+**Linux:**
+```bash
+# One-line install script
+curl -fsSL https://ollama.ai/install.sh | sh
+
+# Or via package managers:
+# Ubuntu/Debian
+sudo apt install ollama
+
+# Fedora
+sudo dnf install ollama
+```
+
+##### Starting the Ollama Server
+
+Ollama runs as a background service. Start it before running your tests:
+
+```bash
+# Start Ollama server (runs on port 11434 by default)
+ollama serve
+
+# Or run in background
+ollama serve &
+
+# On Windows, Ollama typically starts automatically after installation
+# Check if it's running:
+curl http://localhost:11434/api/tags
+```
+
+##### Pulling Models
+
+Before using a model, you need to download it:
+
+```bash
+# Recommended models for Intent Healer:
+
+# Llama 3.1 - Best overall performance (8B parameters)
+ollama pull llama3.1
+
+# Mistral - Good balance of speed and quality (7B)
+ollama pull mistral
+
+# CodeLlama - Optimized for code understanding (7B)
+ollama pull codellama
+
+# Phi-3 - Fast and lightweight (3.8B)
+ollama pull phi3
+
+# Gemma 2 - Google's efficient model (9B)
+ollama pull gemma2
+
+# List downloaded models
+ollama list
+
+# Remove a model
+ollama rm <model-name>
+```
+
+**Model Selection Guide:**
+
+| Model | Size | Speed | Quality | Best For |
+|-------|------|-------|---------|----------|
+| `llama3.1` | 8B | Medium | Excellent | Production use |
+| `llama3.1:70b` | 70B | Slow | Best | Complex healing |
+| `mistral` | 7B | Fast | Good | Daily development |
+| `codellama` | 7B | Fast | Good | Code-heavy tests |
+| `phi3` | 3.8B | Very Fast | Decent | Quick iterations |
+| `gemma2` | 9B | Medium | Very Good | Balanced choice |
+
+##### Configuration for Ollama
+
 ```yaml
+# healer-config.yml
+healer:
+  mode: AUTO_SAFE
+  enabled: true
+
 llm:
   provider: ollama
-  model: llama2  # or codellama, mistral, etc.
-  base_url: http://localhost:11434
-  # No API key required
+  model: llama3.1              # or mistral, codellama, phi3, etc.
+  endpoint: http://localhost:11434
+  timeout_seconds: 120         # Local models may need more time
+  max_retries: 2
+  temperature: 0.1             # Lower = more consistent results
+
+  # Fallback to cloud if local is slow/unavailable
+  fallback:
+    - provider: openai
+      model: gpt-4o-mini
+      api_key_env: OPENAI_API_KEY
+```
+
+##### Environment Variables
+
+```bash
+# Override default Ollama endpoint
+export OLLAMA_HOST=http://localhost:11434
+
+# Override default model
+export OLLAMA_MODEL=mistral
+
+# For remote Ollama servers
+export OLLAMA_HOST=http://your-server:11434
+```
+
+##### Verifying Ollama Setup
+
+```bash
+# Check if Ollama is running
+curl http://localhost:11434/api/tags
+
+# Test a model directly
+ollama run llama3.1 "What is 2+2?"
+
+# Check available models
+ollama list
+
+# View model info
+ollama show llama3.1
+```
+
+##### Troubleshooting Ollama
+
+**"Connection refused" error:**
+```
+LlmException: Connection refused to http://localhost:11434
+```
+Solution: Start the Ollama server with `ollama serve`
+
+**"Model not found" error:**
+```
+Error: model 'llama3.1' not found
+```
+Solution: Pull the model first with `ollama pull llama3.1`
+
+**Slow responses:**
+- Try a smaller model (e.g., `phi3` instead of `llama3.1`)
+- Increase `timeout_seconds` in config
+- Ensure you have enough RAM (8GB+ recommended for 7B models)
+- Use GPU acceleration if available
+
+**Out of memory:**
+```
+Error: not enough memory
+```
+Solutions:
+- Use a smaller model (`phi3` needs ~4GB RAM)
+- Close other applications
+- For larger models, ensure you have GPU with sufficient VRAM
+
+##### Running Ollama on a Remote Server
+
+For team environments, you can run Ollama on a central server:
+
+```bash
+# On the server - bind to all interfaces
+OLLAMA_HOST=0.0.0.0:11434 ollama serve
+
+# In healer-config.yml on client machines
+llm:
+  provider: ollama
+  endpoint: http://your-ollama-server:11434
+  model: llama3.1
+```
+
+##### GPU Acceleration
+
+Ollama automatically uses GPU if available:
+- **NVIDIA**: Install CUDA drivers
+- **AMD**: Install ROCm (Linux only)
+- **Apple Silicon**: Native Metal support (automatic)
+
+Check GPU usage:
+```bash
+# NVIDIA
+nvidia-smi
+
+# Ollama will log GPU usage on startup
+ollama serve
+# Look for: "using CUDA" or "using Metal"
 ```
 
 ---

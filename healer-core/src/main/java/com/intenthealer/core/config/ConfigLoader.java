@@ -7,6 +7,8 @@ import com.intenthealer.core.model.HealPolicy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.intenthealer.core.exception.ConfigurationException;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -84,7 +86,7 @@ public class ConfigLoader {
                 mergeConfig(config, wrapper.healer);
             }
         } catch (IOException e) {
-            throw new RuntimeException("Failed to load configuration from " + path, e);
+            throw ConfigurationException.loadFailed(path, e);
         }
 
         config.validate();
@@ -104,7 +106,7 @@ public class ConfigLoader {
                 mergeConfig(config, wrapper.healer);
             }
         } catch (IOException e) {
-            throw new RuntimeException("Failed to load configuration from stream", e);
+            throw ConfigurationException.streamLoadFailed(e);
         }
 
         config.validate();

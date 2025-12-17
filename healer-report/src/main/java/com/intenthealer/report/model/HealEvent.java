@@ -1,5 +1,6 @@
 package com.intenthealer.report.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.time.Instant;
@@ -88,28 +89,34 @@ public class HealEvent {
     public String getBackupPath() { return backupPath; }
     public void setBackupPath(String backupPath) { this.backupPath = backupPath; }
 
-    // Convenience methods for WeeklyHealthReportGenerator
+    // Convenience methods for WeeklyHealthReportGenerator (excluded from serialization)
+    @JsonIgnore
     public String getOutcome() {
         return result != null ? result.getStatus() : null;
     }
 
+    @JsonIgnore
     public Double getLlmCostUsd() {
         return cost != null ? cost.getCostUsd() : null;
     }
 
+    @JsonIgnore
     public Double getLlmLatencyMs() {
         // Not tracked in current model, return null
         return null;
     }
 
+    @JsonIgnore
     public String getOriginalLocator() {
         return failure != null ? failure.getOriginalLocator() : null;
     }
 
+    @JsonIgnore
     public String getStepText() {
         return step;
     }
 
+    @JsonIgnore
     public String getHealedLocator() {
         return result != null ? result.getHealedLocator() : null;
     }

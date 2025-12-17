@@ -1,5 +1,6 @@
 package com.intenthealer.cli.commands;
 
+import com.intenthealer.cli.util.CliOutput;
 import com.intenthealer.core.config.CacheConfig;
 import com.intenthealer.core.config.ConfigLoader;
 import com.intenthealer.core.config.HealerConfig;
@@ -23,19 +24,15 @@ public class CacheCommand {
 
         HealCache.CacheStats stats = cache.getStats();
 
-        System.out.println();
-        System.out.println("═══════════════════════════════════════════════════════════════");
-        System.out.println("                      CACHE STATISTICS                          ");
-        System.out.println("═══════════════════════════════════════════════════════════════");
-        System.out.println();
-        System.out.printf("  Entries:          %d / %d%n", stats.size(), stats.maxSize());
-        System.out.printf("  Hit Rate:         %.1f%%%n", stats.getHitRate() * 100);
-        System.out.println();
-        System.out.printf("  Hits:             %d%n", stats.hits());
-        System.out.printf("  Misses:           %d%n", stats.misses());
-        System.out.printf("  Evictions:        %d%n", stats.evictions());
-        System.out.println();
-        System.out.println("═══════════════════════════════════════════════════════════════");
+        CliOutput.header("CACHE STATISTICS");
+        CliOutput.printf("  Entries:          %d / %d%n", stats.size(), stats.maxSize());
+        CliOutput.printf("  Hit Rate:         %.1f%%%n", stats.getHitRate() * 100);
+        CliOutput.println();
+        CliOutput.printf("  Hits:             %d%n", stats.hits());
+        CliOutput.printf("  Misses:           %d%n", stats.misses());
+        CliOutput.printf("  Evictions:        %d%n", stats.evictions());
+        CliOutput.println();
+        CliOutput.divider();
 
         cache.shutdown();
     }
@@ -45,8 +42,8 @@ public class CacheCommand {
      */
     public void clear(boolean force) {
         if (!force) {
-            System.out.println("This will clear all cached heals.");
-            System.out.println("Use --force to confirm.");
+            CliOutput.println("This will clear all cached heals.");
+            CliOutput.println("Use --force to confirm.");
             return;
         }
 
@@ -65,26 +62,26 @@ public class CacheCommand {
                     Path cachePath = Path.of(cacheDir, "heal-cache.json");
                     if (Files.exists(cachePath)) {
                         Files.delete(cachePath);
-                        System.out.println("Deleted cache file: " + cachePath);
+                        CliOutput.println("Deleted cache file: " + cachePath);
                     }
                 } catch (IOException e) {
-                    System.err.println("Warning: Could not delete cache file: " + e.getMessage());
+                    CliOutput.warn("Could not delete cache file: " + e.getMessage());
                 }
             }
         }
 
-        System.out.println("✅ Cache cleared");
+        CliOutput.println("Cache cleared");
     }
 
     /**
      * Warm up cache from previous runs.
      */
     public void warmup(String reportDir) {
-        System.out.println("Warming up cache from reports in: " + reportDir);
+        CliOutput.println("Warming up cache from reports in: " + reportDir);
 
         Path dirPath = Path.of(reportDir);
         if (!Files.exists(dirPath)) {
-            System.err.println("Report directory not found: " + reportDir);
+            CliOutput.error("Report directory not found: " + reportDir);
             return;
         }
 
@@ -94,8 +91,8 @@ public class CacheCommand {
         // Would load successful heals from reports and add to cache
         // Implementation depends on report format
 
-        System.out.println("Cache warmup complete.");
-        System.out.printf("Cache now contains %d entries%n", cache.getStats().size());
+        CliOutput.println("Cache warmup complete.");
+        CliOutput.printf("Cache now contains %d entries%n", cache.getStats().size());
 
         cache.shutdown();
     }
@@ -118,7 +115,7 @@ public class CacheCommand {
         HealCache cache = new HealCache(cacheConfig);
         cache.shutdown(); // This triggers persistence
 
-        System.out.println("✅ Cache exported to: " + outputPath);
+        CliOutput.println("Cache exported to: " + outputPath);
     }
 
     /**
@@ -127,7 +124,7 @@ public class CacheCommand {
     public void importCache(String inputPath) throws IOException {
         Path path = Path.of(inputPath);
         if (!Files.exists(path)) {
-            System.err.println("Cache file not found: " + inputPath);
+            CliOutput.error("Cache file not found: " + inputPath);
             return;
         }
 
@@ -142,7 +139,7 @@ public class CacheCommand {
         cacheConfig.setPersistenceDir(path.getParent().toString());
 
         HealCache cache = new HealCache(cacheConfig);
-        System.out.printf("✅ Imported %d cache entries%n", cache.getStats().size());
+        CliOutput.printf("Imported %d cache entries%n", cache.getStats().size());
 
         cache.shutdown();
     }

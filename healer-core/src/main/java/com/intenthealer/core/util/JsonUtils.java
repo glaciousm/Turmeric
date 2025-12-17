@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.intenthealer.core.exception.JsonSerializationException;
 
 import java.util.Optional;
 
@@ -49,7 +50,7 @@ public final class JsonUtils {
         try {
             return MAPPER.writeValueAsString(value);
         } catch (JsonProcessingException e) {
-            throw new RuntimeException("Failed to serialize to JSON", e);
+            throw JsonSerializationException.serializationFailed(value, e);
         }
     }
 
@@ -60,7 +61,7 @@ public final class JsonUtils {
         try {
             return PRETTY_MAPPER.writeValueAsString(value);
         } catch (JsonProcessingException e) {
-            throw new RuntimeException("Failed to serialize to JSON", e);
+            throw JsonSerializationException.serializationFailed(value, e);
         }
     }
 
@@ -71,7 +72,7 @@ public final class JsonUtils {
         try {
             return MAPPER.readValue(json, type);
         } catch (JsonProcessingException e) {
-            throw new RuntimeException("Failed to deserialize JSON", e);
+            throw JsonSerializationException.deserializationFailed(type, e);
         }
     }
 
@@ -93,7 +94,7 @@ public final class JsonUtils {
         try {
             return MAPPER.readTree(json);
         } catch (JsonProcessingException e) {
-            throw new RuntimeException("Failed to parse JSON", e);
+            throw JsonSerializationException.parseFailed(e);
         }
     }
 

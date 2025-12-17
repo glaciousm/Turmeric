@@ -1,5 +1,6 @@
 package com.intenthealer.llm.providers;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -271,6 +272,7 @@ public class OllamaProvider implements LlmProvider {
         public double temperature;
     }
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
     private static class OllamaResponse {
         public String model;
         public String response;

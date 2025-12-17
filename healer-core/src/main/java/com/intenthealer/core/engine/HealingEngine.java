@@ -1,7 +1,16 @@
 package com.intenthealer.core.engine;
 
 import com.intenthealer.core.config.HealerConfig;
+import com.intenthealer.core.engine.approval.ApprovalCallback;
+import com.intenthealer.core.engine.approval.ApprovalDecision;
+import com.intenthealer.core.engine.approval.ApprovalWorkflow;
+import com.intenthealer.core.engine.approval.HealProposal;
 import com.intenthealer.core.engine.guardrails.GuardrailChecker;
+import com.intenthealer.core.engine.notification.NotificationConfig;
+import com.intenthealer.core.engine.notification.NotificationService;
+import com.intenthealer.core.engine.notification.NotificationService.HealNotification;
+import com.intenthealer.core.engine.sharing.PatternSharingService;
+import com.intenthealer.core.engine.sharing.PatternSharingService.*;
 import com.intenthealer.core.model.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,6 +33,8 @@ public class HealingEngine {
 
     private final HealerConfig config;
     private final GuardrailChecker guardrails;
+    private final NotificationService notificationService;
+    private final PatternSharingService patternSharingService;
 
     // Pluggable components
     private Function<FailureContext, UiSnapshot> snapshotCapture;
@@ -31,9 +42,28 @@ public class HealingEngine {
     private TriFunction<ActionType, ElementSnapshot, Object, Void> actionExecutor;
     private Function<ExecutionContext, OutcomeResult> outcomeValidator;
 
+    // Optional approval workflow for CONFIRM mode
+    private ApprovalWorkflow approvalWorkflow;
+
     public HealingEngine(HealerConfig config) {
         this.config = Objects.requireNonNull(config, "config cannot be null");
         this.guardrails = new GuardrailChecker(config.getGuardrails());
+
+        // Initialize notification service if configured
+        NotificationConfig notificationConfig = config.getNotification();
+        if (notificationConfig != null && notificationConfig.isEnabled()) {
+            this.notificationService = new NotificationService(notificationConfig);
+        } else {
+            this.notificationService = null;
+        }
+
+        // Initialize pattern sharing service
+        SharingConfig sharingConfig = config.getSharing();
+        if (sharingConfig != null) {
+            this.patternSharingService = new PatternSharingService(sharingConfig);
+        } else {
+            this.patternSharingService = new PatternSharingService();
+        }
     }
 
     /**
@@ -62,6 +92,14 @@ public class HealingEngine {
      */
     public void setOutcomeValidator(Function<ExecutionContext, OutcomeResult> outcomeValidator) {
         this.outcomeValidator = outcomeValidator;
+    }
+
+    /**
+     * Set the approval workflow for CONFIRM mode.
+     * When set, heals with CONFIRM policy will require approval before execution.
+     */
+    public void setApprovalWorkflow(ApprovalWorkflow approvalWorkflow) {
+        this.approvalWorkflow = approvalWorkflow;
     }
 
     /**
@@ -97,6 +135,42 @@ public class HealingEngine {
             GuardrailResult urlCheck = guardrails.checkUrl(snapshot.getUrl());
             if (urlCheck.isRefused()) {
                 return HealResult.refused(urlCheck.getReason());
+            }
+
+            // 2.5. Check for matching patterns (skip LLM if high-confidence match found)
+            if (failure.getOriginalLocator() != null) {
+                List<PatternMatch> patternMatches = patternSharingService.findMatchingPatterns(
+                        failure.getOriginalLocator(), snapshot.getUrl());
+
+                if (!patternMatches.isEmpty()) {
+                    PatternMatch bestMatch = patternMatches.get(0);
+                    // Use pattern if similarity is very high (>= 0.85)
+                    if (bestMatch.similarity() >= 0.85 && bestMatch.pattern().successRate() >= 0.8) {
+                        logger.info("Using cached pattern with {}% similarity and {}% success rate",
+                                Math.round(bestMatch.similarity() * 100),
+                                Math.round(bestMatch.pattern().successRate() * 100));
+
+                        // Create heal decision from pattern
+                        HealDecision patternDecision = HealDecision.builder()
+                                .canHeal(true)
+                                .confidence(bestMatch.pattern().avgConfidence())
+                                .reasoning("Matched existing pattern: " + bestMatch.pattern().patternId())
+                                .selectedElementIndex(-1) // Special marker for pattern-based heal
+                                .build();
+
+                        HealResult patternResult = HealResult.builder()
+                                .outcome(HealOutcome.SUCCESS)
+                                .decision(patternDecision)
+                                .healedLocator(bestMatch.pattern().healedSignature())
+                                .confidence(bestMatch.pattern().avgConfidence())
+                                .reasoning("Pattern match from " + bestMatch.source())
+                                .duration(Duration.between(startTime, Instant.now()))
+                                .build();
+
+                        sendNotification(failure, patternResult);
+                        return patternResult;
+                    }
+                }
             }
 
             // 3. Get LLM decision
@@ -146,18 +220,57 @@ public class HealingEngine {
                         .build();
             }
 
+            // 7.5. Handle CONFIRM mode (require approval before executing)
+            if (intent.getPolicy() == HealPolicy.CONFIRM && approvalWorkflow != null) {
+                // Generate proposed locator for the approval request
+                String proposedLocatorStr = generateLocatorFromElement(chosenElement);
+                LocatorInfo proposedLocator = parseLocatorString(proposedLocatorStr);
+
+                // Create proposal
+                HealProposal proposal = HealProposal.builder()
+                        .featureName(failure.getFeatureName())
+                        .scenarioName(failure.getScenarioName())
+                        .stepText(failure.getStepText())
+                        .originalLocator(failure.getOriginalLocator())
+                        .proposedLocator(proposedLocator)
+                        .actionType(failure.getActionType())
+                        .confidence(decision.getConfidence())
+                        .reasoning(decision.getReasoning())
+                        .pageUrl(snapshot.getUrl())
+                        .build();
+
+                logger.info("Submitting heal proposal for approval: {}", proposal.getId());
+
+                // Submit for approval - this may block waiting for human approval
+                ApprovalDecision approvalDecision = approvalWorkflow.submitForApproval(proposal, intent.getPolicy());
+
+                if (!approvalDecision.isApproved()) {
+                    logger.info("Heal proposal {} was rejected: {}", proposal.getId(), approvalDecision.getReason());
+                    return HealResult.builder()
+                            .outcome(HealOutcome.REFUSED)
+                            .decision(decision)
+                            .failureReason("Approval rejected: " + approvalDecision.getReason())
+                            .duration(Duration.between(startTime, Instant.now()))
+                            .build();
+                }
+
+                logger.info("Heal proposal {} was approved", proposal.getId());
+            }
+
             // 8. Execute the healed action
             if (actionExecutor != null) {
                 try {
                     actionExecutor.apply(failure.getActionType(), chosenElement, failure.getActionData());
                 } catch (Exception e) {
                     logger.error("Action execution failed: {}", e.getMessage());
-                    return HealResult.builder()
+                    HealResult actionFailedResult = HealResult.builder()
                             .outcome(HealOutcome.FAILED)
                             .decision(decision)
                             .failureReason("Action execution failed: " + e.getMessage())
                             .duration(Duration.between(startTime, Instant.now()))
                             .build();
+                    sendNotification(failure, actionFailedResult);
+                    return actionFailedResult;
                 }
             }
 
@@ -166,12 +279,14 @@ public class HealingEngine {
                 ExecutionContext ctx = new ExecutionContext(null, snapshot);
                 OutcomeResult outcomeResult = outcomeValidator.apply(ctx);
                 if (outcomeResult.isFailed()) {
-                    return HealResult.builder()
+                    HealResult outcomeFailedResult = HealResult.builder()
                             .outcome(HealOutcome.OUTCOME_FAILED)
                             .decision(decision)
                             .failureReason(outcomeResult.getMessage())
                             .duration(Duration.between(startTime, Instant.now()))
                             .build();
+                    sendNotification(failure, outcomeFailedResult);
+                    return outcomeFailedResult;
                 }
             }
 
@@ -179,7 +294,7 @@ public class HealingEngine {
             String healedLocator = generateLocatorFromElement(chosenElement);
             logger.info("Generated healed locator: {}", healedLocator);
 
-            return HealResult.builder()
+            HealResult successResult = HealResult.builder()
                     .outcome(HealOutcome.SUCCESS)
                     .decision(decision)
                     .healedElementIndex(decision.getSelectedElementIndex())
@@ -189,13 +304,26 @@ public class HealingEngine {
                     .duration(Duration.between(startTime, Instant.now()))
                     .build();
 
+            // Send success notification
+            sendNotification(failure, successResult);
+
+            // Store successful heal pattern for future use
+            storeHealPattern(failure, healedLocator, decision.getConfidence(), intent);
+
+            return successResult;
+
         } catch (Exception e) {
             logger.error("Unexpected error during healing: {}", e.getMessage(), e);
-            return HealResult.builder()
+            HealResult failedResult = HealResult.builder()
                     .outcome(HealOutcome.FAILED)
                     .failureReason("Unexpected error: " + e.getMessage())
                     .duration(Duration.between(startTime, Instant.now()))
                     .build();
+
+            // Send failure notification
+            sendNotification(failure, failedResult);
+
+            return failedResult;
         }
     }
 
@@ -293,6 +421,137 @@ public class HealingEngine {
      */
     private String escapeXpathText(String text) {
         return text.replace("'", "\\'");
+    }
+
+    /**
+     * Send a notification about a heal result.
+     * This is a fire-and-forget operation that doesn't block the main thread.
+     */
+    private void sendNotification(FailureContext failure, HealResult result) {
+        if (notificationService == null) {
+            return;
+        }
+
+        try {
+            HealDecision decision = result.getDecision().orElse(null);
+            String originalLocator = failure.getOriginalLocator() != null
+                    ? failure.getOriginalLocator().toString()
+                    : "unknown";
+            String healedLocator = result.getHealedLocator().orElse("N/A");
+            double confidence = decision != null ? decision.getConfidence() : 0.0;
+            String reasoning = decision != null ? decision.getReasoning() : result.getFailureReason().orElse("Unknown");
+
+            HealNotification notification = new HealNotification(
+                    Instant.now(),
+                    failure.getFeatureName() != null ? failure.getFeatureName() : "Unknown Feature",
+                    failure.getScenarioName() != null ? failure.getScenarioName() : "Unknown Scenario",
+                    failure.getStepText(),
+                    originalLocator,
+                    healedLocator,
+                    confidence,
+                    determineTrustLevel(confidence),
+                    reasoning,
+                    result.getOutcome() == HealOutcome.SUCCESS
+            );
+
+            notificationService.notifyHeal(notification);
+        } catch (Exception e) {
+            logger.warn("Failed to send heal notification: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Store a successful heal pattern for future reuse.
+     */
+    private void storeHealPattern(FailureContext failure, String healedLocator, double confidence, IntentContract intent) {
+        if (patternSharingService == null || failure.getOriginalLocator() == null) {
+            return;
+        }
+
+        try {
+            // Parse the healed locator back into a LocatorInfo
+            LocatorInfo healedLocatorInfo = parseLocatorString(healedLocator);
+            if (healedLocatorInfo == null) {
+                return;
+            }
+
+            // Determine page URL pattern from failure context
+            String pageUrlPattern = null;
+            if (failure.getAdditionalContext() != null) {
+                Object pageUrl = failure.getAdditionalContext().get("pageUrl");
+                if (pageUrl != null) {
+                    pageUrlPattern = pageUrl.toString();
+                }
+            }
+
+            HealPatternData patternData = new HealPatternData(
+                    failure.getOriginalLocator(),
+                    healedLocatorInfo,
+                    pageUrlPattern,
+                    intent != null ? intent.getDescription() : failure.getStepText(),
+                    confidence,
+                    true, // success
+                    failure.getTags()
+            );
+
+            patternSharingService.addPattern(patternData);
+            logger.debug("Stored heal pattern for locator: {}", failure.getOriginalLocator());
+        } catch (Exception e) {
+            logger.warn("Failed to store heal pattern: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Parse a locator string (e.g., "id=button", "css=.class") into LocatorInfo.
+     */
+    private LocatorInfo parseLocatorString(String locatorStr) {
+        if (locatorStr == null || !locatorStr.contains("=")) {
+            return null;
+        }
+
+        int eqIndex = locatorStr.indexOf('=');
+        String strategy = locatorStr.substring(0, eqIndex).toUpperCase();
+        String value = locatorStr.substring(eqIndex + 1);
+
+        try {
+            LocatorInfo.LocatorStrategy locatorStrategy = switch (strategy) {
+                case "ID" -> LocatorInfo.LocatorStrategy.ID;
+                case "NAME" -> LocatorInfo.LocatorStrategy.NAME;
+                case "CSS" -> LocatorInfo.LocatorStrategy.CSS;
+                case "XPATH" -> LocatorInfo.LocatorStrategy.XPATH;
+                case "CLASSNAME", "CLASS" -> LocatorInfo.LocatorStrategy.CLASS_NAME;
+                case "TAGNAME", "TAG" -> LocatorInfo.LocatorStrategy.TAG_NAME;
+                case "LINKTEXT", "LINK" -> LocatorInfo.LocatorStrategy.LINK_TEXT;
+                case "PARTIALLINKTEXT" -> LocatorInfo.LocatorStrategy.PARTIAL_LINK_TEXT;
+                default -> LocatorInfo.LocatorStrategy.CSS;
+            };
+            return new LocatorInfo(locatorStrategy, value);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * Determine trust level based on confidence score.
+     */
+    private String determineTrustLevel(double confidence) {
+        if (confidence >= 0.9) {
+            return "HIGH";
+        } else if (confidence >= 0.7) {
+            return "MEDIUM";
+        } else {
+            return "LOW";
+        }
+    }
+
+    /**
+     * Shutdown the notification service gracefully.
+     * Should be called when the engine is no longer needed.
+     */
+    public void shutdown() {
+        if (notificationService != null) {
+            notificationService.shutdown();
+        }
     }
 
     /**

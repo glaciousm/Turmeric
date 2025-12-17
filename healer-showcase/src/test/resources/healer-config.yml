@@ -1,17 +1,19 @@
 # Intent Healer Configuration - Showcase Demo
-# Uses Mock LLM (heuristic-based, no external LLM required)
+# Uses Local LLM via Ollama
 
 healer:
   # Healing Mode
   mode: AUTO_SAFE
   enabled: true
 
-  # LLM Provider Configuration - Using Mock (heuristic-based)
+  # LLM Provider Configuration - Using Ollama (local LLM)
   llm:
-    provider: mock
-    model: heuristic
-    timeout_seconds: 60
+    provider: ollama
+    model: llama3.1
+    endpoint: http://localhost:11434
+    timeout_seconds: 120
     max_retries: 2
+    temperature: 0.1
 
   # Auto-Update Configuration (disabled for showcase)
   auto_update:

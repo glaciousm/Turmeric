@@ -79,6 +79,41 @@ public class LlmException extends HealingException {
                 cause, provider, "unknown");
     }
 
+    /**
+     * Creates an exception for cryptographic operation failure.
+     */
+    public static LlmException cryptoError(String provider, String operation, Throwable cause) {
+        return new LlmException(
+                operation + " failed for " + provider,
+                cause, provider, "unknown");
+    }
+
+    /**
+     * Creates an exception for rate limiting (HTTP 429).
+     */
+    public static LlmException rateLimited(String provider, String model) {
+        return new LlmException(
+                "Rate limited by " + provider + "/" + model + ". Please wait before retrying.",
+                provider, model);
+    }
+
+    /**
+     * Creates an exception for rate limiting with retry-after hint.
+     */
+    public static LlmException rateLimited(String provider, String model, int retryAfterSeconds) {
+        return new LlmException(
+                "Rate limited by " + provider + "/" + model + ". Retry after " + retryAfterSeconds + " seconds.",
+                provider, model);
+    }
+
+    /**
+     * Checks if this exception indicates rate limiting.
+     */
+    public boolean isRateLimited() {
+        String msg = getMessage();
+        return msg != null && (msg.contains("Rate limited") || msg.contains("429") || msg.contains("rate limit"));
+    }
+
     @Override
     public String toString() {
         return "LlmException{provider='" + provider + "', model='" + model +

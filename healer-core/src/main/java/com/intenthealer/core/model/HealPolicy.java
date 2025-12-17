@@ -22,6 +22,12 @@ public enum HealPolicy {
     AUTO_SAFE,
 
     /**
+     * Require human confirmation before applying any heal.
+     * Useful when building trust or for critical test paths.
+     */
+    CONFIRM,
+
+    /**
      * Heal all allowed actions including potentially risky ones.
      * Requires explicit opt-in.
      */
