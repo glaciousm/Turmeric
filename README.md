@@ -24,6 +24,12 @@ Intent Healer is an intelligent test automation framework that automatically fix
 ### 1. Add Dependencies
 
 ```xml
+<!-- Required dependencies -->
+<dependency>
+    <groupId>com.intenthealer</groupId>
+    <artifactId>healer-core</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+</dependency>
 <dependency>
     <groupId>com.intenthealer</groupId>
     <artifactId>healer-selenium</artifactId>
@@ -60,6 +66,8 @@ HealingWebDriver driver = new HealingWebDriver(chrome, engine, config);
 // Use driver normally - healing happens automatically!
 driver.findElement(By.id("some-locator")).click();
 ```
+
+> **Note**: The `mock` provider uses heuristic matching and requires no API keys. For better accuracy, use `openai`, `anthropic`, or `ollama` providers. See the [User Guide](docs/USER_GUIDE.md) for complete setup instructions.
 
 ---
 

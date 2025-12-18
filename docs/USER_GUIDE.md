@@ -47,58 +47,169 @@ Intent Healer is an intelligent self-healing framework that automatically fixes 
 ### Required
 
 - **Java 21+** (LTS recommended)
-- **Maven 3.8+**
+- **Maven 3.8+** or Gradle 8.x
 - **Selenium WebDriver 4.x**
-- **LLM API Access** (at least one):
-  - OpenAI API key, OR
-  - Anthropic API key, OR
-  - Azure OpenAI deployment, OR
-  - AWS Bedrock access, OR
-  - Local Ollama installation
+- **Browser** with matching WebDriver (Chrome, Firefox, Edge, etc.)
+
+### Optional (for AI-powered healing)
+
+LLM provider access improves healing accuracy but is **not required**. You can start with the built-in `mock` provider (heuristic-based) which needs no API keys:
+
+- **OpenAI** - API key from platform.openai.com
+- **Anthropic** - API key from console.anthropic.com
+- **Azure OpenAI** - Deployment from Azure portal
+- **AWS Bedrock** - AWS account with Bedrock access
+- **Ollama** - Local installation (free, no API key needed)
 
 ### Recommended
 
-- Chrome/Firefox browser with matching WebDriver
 - IDE with plugin support (IntelliJ IDEA or VS Code)
+- Git for version control
 
 ---
 
 ## Quick Start
 
+This section shows you how to integrate Intent Healer into your existing Selenium project in 5 minutes.
+
 ### Step 1: Add Dependencies
 
-```kotlin
-dependencies {
-    // Core healing engine
-    testImplementation("com.intenthealer:healer-core:1.0.0")
-    testImplementation("com.intenthealer:healer-llm:1.0.0")
-    testImplementation("com.intenthealer:healer-selenium:1.0.0")
+**Maven (pom.xml)** - Add these dependencies:
 
-    // Choose your test framework integration
-    testImplementation("com.intenthealer:healer-cucumber:1.0.0")  // For Cucumber
-    // OR
-    testImplementation("com.intenthealer:healer-junit:1.0.0")     // For JUnit 5
-    // OR
-    testImplementation("com.intenthealer:healer-testng:1.0.0")    // For TestNG
-}
-```
-
-**Maven (pom.xml)**
 ```xml
 <dependencies>
+    <!-- Intent Healer Core (required) -->
     <dependency>
         <groupId>com.intenthealer</groupId>
         <artifactId>healer-core</artifactId>
-        <version>1.0.0</version>
+        <version>1.0.0-SNAPSHOT</version>
         <scope>test</scope>
     </dependency>
-    <!-- Add other modules as needed -->
+
+    <!-- Intent Healer Selenium Integration (required) -->
+    <dependency>
+        <groupId>com.intenthealer</groupId>
+        <artifactId>healer-selenium</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <scope>test</scope>
+    </dependency>
+
+    <!-- Intent Healer LLM Providers (required for AI healing) -->
+    <dependency>
+        <groupId>com.intenthealer</groupId>
+        <artifactId>healer-llm</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <scope>test</scope>
+    </dependency>
+
+    <!-- Optional: Framework-specific integration -->
+    <!-- For Cucumber -->
+    <dependency>
+        <groupId>com.intenthealer</groupId>
+        <artifactId>healer-cucumber</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <scope>test</scope>
+    </dependency>
+
+    <!-- OR for JUnit 5 -->
+    <dependency>
+        <groupId>com.intenthealer</groupId>
+        <artifactId>healer-junit</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <scope>test</scope>
+    </dependency>
+
+    <!-- OR for TestNG -->
+    <dependency>
+        <groupId>com.intenthealer</groupId>
+        <artifactId>healer-testng</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <scope>test</scope>
+    </dependency>
 </dependencies>
 ```
 
-### Step 2: Set Up API Key
+**Gradle (build.gradle.kts)**:
 
-Set your LLM provider API key as an environment variable:
+```kotlin
+dependencies {
+    // Required dependencies
+    testImplementation("com.intenthealer:healer-core:1.0.0-SNAPSHOT")
+    testImplementation("com.intenthealer:healer-selenium:1.0.0-SNAPSHOT")
+    testImplementation("com.intenthealer:healer-llm:1.0.0-SNAPSHOT")
+
+    // Optional: Choose your test framework integration
+    testImplementation("com.intenthealer:healer-cucumber:1.0.0-SNAPSHOT")  // For Cucumber
+    // OR
+    testImplementation("com.intenthealer:healer-junit:1.0.0-SNAPSHOT")     // For JUnit 5
+    // OR
+    testImplementation("com.intenthealer:healer-testng:1.0.0-SNAPSHOT")    // For TestNG
+}
+```
+
+### Step 2: Create Configuration File
+
+Create `healer-config.yml` in `src/test/resources/`:
+
+**Option A: Local testing without API keys (recommended to start)**
+
+```yaml
+healer:
+  mode: AUTO_SAFE
+  enabled: true
+
+llm:
+  provider: mock           # Uses heuristic matching - no API key needed!
+  model: heuristic
+  timeout_seconds: 30
+
+guardrails:
+  min_confidence: 0.75
+  max_heals_per_scenario: 10
+
+cache:
+  enabled: true
+  ttl_hours: 24
+
+report:
+  output_dir: target/healer-reports
+  formats:
+    - json
+    - html
+```
+
+**Option B: With OpenAI (better accuracy)**
+
+```yaml
+healer:
+  mode: AUTO_SAFE
+  enabled: true
+
+llm:
+  provider: openai
+  model: gpt-4o-mini       # Cost-effective model
+  api_key_env: OPENAI_API_KEY
+  timeout_seconds: 30
+  confidence_threshold: 0.80
+
+guardrails:
+  min_confidence: 0.80
+  max_heals_per_scenario: 5
+
+cache:
+  enabled: true
+  ttl_hours: 24
+
+report:
+  output_dir: target/healer-reports
+  formats:
+    - json
+    - html
+```
+
+### Step 3: Set Up API Key (skip if using mock provider)
+
+If using a cloud LLM provider, set the API key as an environment variable:
 
 ```bash
 # For OpenAI
@@ -107,50 +218,174 @@ export OPENAI_API_KEY="sk-your-api-key-here"
 # For Anthropic
 export ANTHROPIC_API_KEY="sk-ant-your-key-here"
 
-# For Azure OpenAI
-export AZURE_OPENAI_API_KEY="your-azure-key"
-export AZURE_OPENAI_ENDPOINT="https://your-resource.openai.azure.com"
+# For Ollama (local) - no API key needed, just start the server
+ollama serve
 ```
 
-### Step 3: Create Configuration File
+### Step 4: Wrap Your WebDriver
 
-Create `healer-config.yml` in your project root or `src/test/resources/`:
+**This is the key integration step.** Replace your regular WebDriver with HealingWebDriver:
 
-```yaml
-healer:
-  mode: AUTO_SAFE          # Start with safe auto-healing
-  enabled: true
+```java
+import com.intenthealer.core.config.ConfigLoader;
+import com.intenthealer.core.config.HealerConfig;
+import com.intenthealer.core.engine.HealingEngine;
+import com.intenthealer.selenium.driver.HealingWebDriver;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.chrome.ChromeDriver;
 
-llm:
-  provider: openai
-  model: gpt-4o-mini       # Cost-effective model
-  api_key_env: OPENAI_API_KEY
-  confidence_threshold: 0.80
-  max_cost_per_run_usd: 5.00
+public class TestSetup {
 
-guardrails:
-  min_confidence: 0.80
-  max_heal_attempts_per_step: 2
-  max_heals_per_scenario: 5
+    private HealingWebDriver driver;
 
-cache:
-  enabled: true
-  ttl_hours: 24
+    public void setUp() {
+        // 1. Load Intent Healer configuration
+        HealerConfig config = new ConfigLoader().load();
 
-report:
-  output_dir: build/healer-reports
-  html_enabled: true
+        // 2. Create the healing engine
+        HealingEngine engine = new HealingEngine(config);
+
+        // 3. Create your regular WebDriver (any way you prefer)
+        WebDriver chromeDriver = new ChromeDriver();
+
+        // 4. Wrap it with HealingWebDriver
+        driver = new HealingWebDriver(chromeDriver, engine, config);
+
+        // That's it! Use 'driver' as you normally would
+    }
+
+    public void tearDown() {
+        if (driver != null) {
+            driver.quit();
+        }
+    }
+}
 ```
 
-### Step 4: Run Your Tests
+### Step 5: Use Your Driver Normally
 
-Run your existing tests - healing happens automatically when elements aren't found!
+No changes needed to your test code! Just use the HealingWebDriver like a regular WebDriver:
+
+```java
+@Test
+public void testLogin() {
+    driver.get("https://example.com/login");
+
+    // If this locator breaks, Intent Healer automatically finds the right element
+    driver.findElement(By.id("username")).sendKeys("testuser");
+    driver.findElement(By.id("password")).sendKeys("password123");
+    driver.findElement(By.cssSelector("button[type='submit']")).click();
+
+    // Assertions work normally
+    assertTrue(driver.getCurrentUrl().contains("/dashboard"));
+}
+```
+
+### Step 6: Run Your Tests
 
 ```bash
 mvn test
 ```
 
-Check the reports in `target/healer-reports/` after the run.
+After the run:
+- Check console output for healing summary
+- View detailed reports in `target/healer-reports/`
+- HTML report shows what was healed with confidence scores
+
+---
+
+## Complete Minimal Example
+
+Here's a complete, copy-paste ready example:
+
+**`src/test/resources/healer-config.yml`**
+```yaml
+healer:
+  mode: AUTO_SAFE
+  enabled: true
+
+llm:
+  provider: mock
+  model: heuristic
+
+cache:
+  enabled: true
+
+report:
+  output_dir: target/healer-reports
+  formats: [html]
+```
+
+**`src/test/java/com/example/SelfHealingTest.java`**
+```java
+package com.example;
+
+import com.intenthealer.core.config.ConfigLoader;
+import com.intenthealer.core.config.HealerConfig;
+import com.intenthealer.core.engine.HealingEngine;
+import com.intenthealer.selenium.driver.HealingWebDriver;
+import org.junit.jupiter.api.*;
+import org.openqa.selenium.By;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.chrome.ChromeDriver;
+import static org.junit.jupiter.api.Assertions.*;
+
+public class SelfHealingTest {
+
+    private static HealingWebDriver driver;
+    private static HealingEngine engine;
+
+    @BeforeAll
+    static void setupClass() {
+        // Load config and create engine once
+        HealerConfig config = new ConfigLoader().load();
+        engine = new HealingEngine(config);
+    }
+
+    @BeforeEach
+    void setUp() {
+        // Create fresh driver for each test
+        HealerConfig config = new ConfigLoader().load();
+        WebDriver chromeDriver = new ChromeDriver();
+        driver = new HealingWebDriver(chromeDriver, engine, config);
+    }
+
+    @AfterEach
+    void tearDown() {
+        if (driver != null) {
+            driver.quit();
+        }
+    }
+
+    @Test
+    void testWithSelfHealing() {
+        driver.get("https://the-internet.herokuapp.com/login");
+
+        // These locators work, but if they break, Intent Healer will find alternatives
+        driver.findElement(By.id("username")).sendKeys("tomsmith");
+        driver.findElement(By.id("password")).sendKeys("SuperSecretPassword!");
+        driver.findElement(By.cssSelector("button[type='submit']")).click();
+
+        // Verify login succeeded
+        assertTrue(driver.getCurrentUrl().contains("/secure"));
+    }
+}
+```
+
+Run with: `mvn test -Dtest=SelfHealingTest`
+
+---
+
+## Mock Provider vs Cloud LLM
+
+| Provider | API Key Required | Cost | Accuracy | Best For |
+|----------|-----------------|------|----------|----------|
+| `mock` | No | Free | Good (heuristic) | Local dev, CI/CD, demos |
+| `ollama` | No | Free | Very Good | Privacy, offline use |
+| `openai` | Yes | ~$0.01/heal | Excellent | Production |
+| `anthropic` | Yes | ~$0.01/heal | Excellent | Production |
+
+**Start with `mock` provider** to test the integration without any API keys. Switch to a cloud provider when you need higher accuracy for production use.
 
 ---
 
