@@ -8,15 +8,41 @@
     <version>1.0.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
-    <name>intent-healer</name>
+    <name>Intent Healer</name>
     <description>Intent-Based Self-Healing for Selenium + Java + Cucumber</description>
-    <url>https://github.com/intenthealer/intent-healer</url>
+    <url>https://github.com/glaciousm/Turmeric</url>
+    <inceptionYear>2025</inceptionYear>
+
     <licenses>
         <license>
-            <name>Apache License, Version 2.0</name>
-            <url>https://www.apache.org/licenses/LICENSE-2.0</url>
+            <name>GNU Affero General Public License v3.0</name>
+            <url>https://www.gnu.org/licenses/agpl-3.0.html</url>
+            <distribution>repo</distribution>
         </license>
     </licenses>
+
+    <developers>
+        <developer>
+            <id>glaciousm</id>
+            <name>Menelaos Mamouzellos</name>
+            <email>mmamouzellos@gmail.com</email>
+            <roles>
+                <role>owner</role>
+                <role>developer</role>
+            </roles>
+        </developer>
+    </developers>
+
+    <scm>
+        <url>https://github.com/glaciousm/Turmeric</url>
+        <connection>scm:git:git://github.com/glaciousm/Turmeric.git</connection>
+        <developerConnection>scm:git:ssh://git@github.com/glaciousm/Turmeric.git</developerConnection>
+    </scm>
+
+    <issueManagement>
+        <system>GitHub Issues</system>
+        <url>https://github.com/glaciousm/Turmeric/issues</url>
+    </issueManagement>
 
     <modules>
         <module>healer-core</module>

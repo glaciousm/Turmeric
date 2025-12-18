@@ -1,5 +1,9 @@
 # Intent Healer
 
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
+[![Java](https://img.shields.io/badge/Java-21+-orange.svg)](https://openjdk.org/)
+[![Maven Central](https://img.shields.io/badge/Maven_Central-coming_soon-lightgrey.svg)]()
+
 > **Self-Healing Selenium Tests with AI-Powered Locator Recovery**
 
 Intent Healer is an intelligent test automation framework that automatically fixes broken element locators using AI. When your Selenium tests fail due to DOM changes, Intent Healer detects the failure, analyzes the page, and finds the correct element - all transparently without test code changes.
@@ -384,7 +388,13 @@ intent-healer/
 
 ## License
 
-[License details here]
+Copyright (C) 2025 Menelaos Mamouzellos
+
+This project is licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0)**.
+
+You are free to use, modify, and distribute this software, but any modified versions must also be open-sourced under AGPL-3.0. If you use this software in a network service, you must make the source code available to users.
+
+See the [LICENSE](LICENSE) file for details.
 
 ---
 
