@@ -8,6 +8,7 @@
 package com.intenthealer.benchmark.scenarios;
 
 import com.intenthealer.benchmark.BenchmarkResult.ExpectedOutcome;
+import com.intenthealer.core.model.ElementSnapshot;
 import org.openqa.selenium.By;
 
 /**
@@ -83,5 +84,13 @@ public class WrongPageScenario extends AbstractBenchmarkScenario {
                 <a href="/" class="btn-primary">Go to Homepage</a>
             </main>
             """);
+    }
+
+    @Override
+    protected boolean matchesExpectedElement(ElementSnapshot element) {
+        // The original element was a login-form but we're on a 404 page.
+        // A link to homepage is NOT a valid replacement for a login form.
+        // Only a form element would be a valid match.
+        return "form".equalsIgnoreCase(element.getTagName());
     }
 }

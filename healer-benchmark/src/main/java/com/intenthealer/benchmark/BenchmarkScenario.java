@@ -322,6 +322,21 @@ public abstract class BenchmarkScenario {
             return ActualOutcome.REFUSED;
         }
 
+        // For REFUSE expected outcomes, validate that any heal is actually wrong
+        if (getExpectedOutcome() == ExpectedOutcome.REFUSE) {
+            ElementSnapshot element = snapshot.getElement(chosenIndex).orElse(null);
+            if (element != null) {
+                // Check if the healed element would be a valid replacement
+                if (!matchesExpectedElement(element)) {
+                    // LLM picked an invalid element - this is a wrong heal
+                    return ActualOutcome.HEALED_WRONG;
+                }
+                // LLM found a valid element when we expected refusal
+                return ActualOutcome.HEALED_CORRECT;
+            }
+            return ActualOutcome.REFUSED;
+        }
+
         return ActualOutcome.HEALED_CORRECT;
     }
 

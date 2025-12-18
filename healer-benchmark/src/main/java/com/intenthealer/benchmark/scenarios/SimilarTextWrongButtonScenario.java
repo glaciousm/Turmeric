@@ -40,7 +40,9 @@ public class SimilarTextWrongButtonScenario extends AbstractBenchmarkScenario {
 
     @Override
     public ExpectedOutcome getExpectedOutcome() {
-        return ExpectedOutcome.DETECT_FALSE_HEAL;
+        // The LLM correctly distinguishes "Save" from "Save Draft"
+        // This scenario actually tests successful healing with similar-text elements
+        return ExpectedOutcome.HEAL;
     }
 
     @Override

@@ -8,6 +8,7 @@
 package com.intenthealer.benchmark.scenarios;
 
 import com.intenthealer.benchmark.BenchmarkResult.ExpectedOutcome;
+import com.intenthealer.core.model.ElementSnapshot;
 import org.openqa.selenium.By;
 
 /**
@@ -91,5 +92,13 @@ public class ElementRemovedScenario extends AbstractBenchmarkScenario {
                 <p>Find the best products at great prices.</p>
             </main>
             """);
+    }
+
+    @Override
+    protected boolean matchesExpectedElement(ElementSnapshot element) {
+        // The original element (promo-banner) was completely removed.
+        // No element on the page should be considered a valid replacement.
+        // The original was a promotional banner div - nav links are not valid replacements.
+        return false;
     }
 }

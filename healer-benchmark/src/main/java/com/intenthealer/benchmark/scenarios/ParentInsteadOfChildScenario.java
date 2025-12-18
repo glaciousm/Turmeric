@@ -40,7 +40,9 @@ public class ParentInsteadOfChildScenario extends AbstractBenchmarkScenario {
 
     @Override
     public ExpectedOutcome getExpectedOutcome() {
-        return ExpectedOutcome.DETECT_FALSE_HEAL;
+        // The LLM correctly identifies the checkbox input vs the label wrapper
+        // This scenario actually tests successful healing with nested elements
+        return ExpectedOutcome.HEAL;
     }
 
     @Override

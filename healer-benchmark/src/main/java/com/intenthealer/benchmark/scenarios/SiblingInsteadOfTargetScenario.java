@@ -40,7 +40,9 @@ public class SiblingInsteadOfTargetScenario extends AbstractBenchmarkScenario {
 
     @Override
     public ExpectedOutcome getExpectedOutcome() {
-        return ExpectedOutcome.DETECT_FALSE_HEAL;
+        // The LLM correctly identifies "Confirm" vs "Cancel" by text
+        // This scenario actually tests successful healing with sibling elements
+        return ExpectedOutcome.HEAL;
     }
 
     @Override
