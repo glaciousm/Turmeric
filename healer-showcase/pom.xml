@@ -13,25 +13,24 @@
     <artifactId>healer-showcase</artifactId>
     <name>Intent Healer - Showcase</name>
     <description>
-        Standalone showcase demonstrating Intent Healer's self-healing capabilities.
+        Standalone showcase demonstrating Intent Healer's self-healing capabilities
+        using the ZERO-CODE Java Agent approach.
         Contains 10 test scenarios with intentionally broken locators that get automatically healed.
+        No HealingWebDriver wrapping required - the agent handles everything!
     </description>
 
     <dependencies>
-        <!-- Intent Healer Dependencies -->
+        <!-- Intent Healer Core (for HealingSummary) -->
         <dependency>
             <groupId>com.intenthealer</groupId>
-            <artifactId>healer-selenium</artifactId>
+            <artifactId>healer-core</artifactId>
             <version>${project.version}</version>
         </dependency>
+
+        <!-- Intent Healer Cucumber Integration -->
         <dependency>
             <groupId>com.intenthealer</groupId>
             <artifactId>healer-cucumber</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.intenthealer</groupId>
-            <artifactId>healer-llm</artifactId>
             <version>${project.version}</version>
         </dependency>
 
@@ -81,6 +80,11 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
+                    <!-- Use the Intent Healer Java Agent for zero-code self-healing -->
+                    <argLine>
+                        -javaagent:${project.basedir}/../healer-agent/target/healer-agent-${project.version}.jar
+                        ${surefireArgLine}
+                    </argLine>
                     <properties>
                         <configurationParameters>
                             cucumber.junit-platform.naming-strategy=long

@@ -71,6 +71,26 @@ driver.findElement(By.id("some-locator")).click();
 
 ---
 
+## Zero-Code Integration (Java Agent)
+
+**Want self-healing without changing any code?** Use the Java Agent approach:
+
+```bash
+# 1. Build the agent JAR
+mvn clean install -pl healer-agent
+
+# 2. Create healer-config.yml in src/test/resources (see above)
+
+# 3. Run tests with the agent
+mvn test -DargLine="-javaagent:healer-agent/target/healer-agent-1.0.0-SNAPSHOT.jar"
+```
+
+That's it! The agent automatically intercepts all WebDriver instances (Chrome, Firefox, Edge, Safari) and adds self-healing capability with zero code changes.
+
+See the [User Guide](docs/USER_GUIDE.md#java-agent-zero-code-integration) for detailed setup instructions.
+
+---
+
 ## Modules
 
 | Module | Description |
@@ -78,6 +98,7 @@ driver.findElement(By.id("some-locator")).click();
 | `healer-core` | Core engine, models, configuration, healing logic |
 | `healer-llm` | LLM providers (OpenAI, Anthropic, Ollama, Azure, Bedrock) |
 | `healer-selenium` | HealingWebDriver, element wrappers, DOM snapshot capture |
+| `healer-agent` | Java Agent for zero-code integration |
 | `healer-cucumber` | Cucumber integration with `@Intent` annotations |
 | `healer-testng` | TestNG listener integration |
 | `healer-junit` | JUnit 5 extension integration |

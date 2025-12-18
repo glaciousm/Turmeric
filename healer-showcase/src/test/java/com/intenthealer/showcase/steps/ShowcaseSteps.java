@@ -2,11 +2,11 @@ package com.intenthealer.showcase.steps;
 
 import com.intenthealer.showcase.config.ShowcaseConfig;
 import com.intenthealer.showcase.pages.HerokuappPages;
-import com.intenthealer.selenium.driver.HealingWebDriver;
 import io.cucumber.java.en.And;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
+import org.openqa.selenium.WebDriver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,14 +15,19 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * Step definitions for Intent Healer Showcase.
  *
- * Each step uses INTENTIONALLY WRONG locators to demonstrate self-healing.
- * The healing happens transparently - tests pass despite broken locators.
+ * <p>Each step uses INTENTIONALLY WRONG locators to demonstrate self-healing.
+ * The healing happens transparently - tests pass despite broken locators.</p>
+ *
+ * <p><b>ZERO-CODE Integration:</b> This class uses a regular WebDriver.
+ * The Java Agent automatically adds self-healing capability - no
+ * HealingWebDriver wrapper needed!</p>
  */
 public class ShowcaseSteps {
 
     private static final Logger logger = LoggerFactory.getLogger(ShowcaseSteps.class);
 
-    private HealingWebDriver driver;
+    // Regular WebDriver - the Java Agent adds self-healing automatically!
+    private WebDriver driver;
     private HerokuappPages pages;
 
     private void ensureDriver() {

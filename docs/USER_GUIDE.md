@@ -9,15 +9,16 @@ A comprehensive guide to configuring, integrating, and using the LLM-powered sel
 1. [Overview](#overview)
 2. [Prerequisites](#prerequisites)
 3. [Quick Start](#quick-start)
-4. [Configuration](#configuration)
-5. [Integration Guide](#integration-guide)
-6. [CLI Reference](#cli-reference)
-7. [IDE Plugins](#ide-plugins)
-8. [Healing Modes & Policies](#healing-modes--policies)
-9. [Trust Levels](#trust-levels)
-10. [Reports & Monitoring](#reports--monitoring)
-11. [Troubleshooting](#troubleshooting)
-12. [Best Practices](#best-practices)
+4. [Java Agent (Zero-Code Integration)](#java-agent-zero-code-integration)
+5. [Configuration](#configuration)
+6. [Integration Guide](#integration-guide)
+7. [CLI Reference](#cli-reference)
+8. [IDE Plugins](#ide-plugins)
+9. [Healing Modes & Policies](#healing-modes--policies)
+10. [Trust Levels](#trust-levels)
+11. [Reports & Monitoring](#reports--monitoring)
+12. [Troubleshooting](#troubleshooting)
+13. [Best Practices](#best-practices)
 
 ---
 
@@ -151,7 +152,7 @@ dependencies {
 
 Create `healer-config.yml` in `src/test/resources/`:
 
-**Option A: Local testing without API keys (recommended to start)**
+**Option A: Ollama - Local LLM (recommended)**
 
 ```yaml
 healer:
@@ -159,9 +160,10 @@ healer:
   enabled: true
 
 llm:
-  provider: mock           # Uses heuristic matching - no API key needed!
-  model: heuristic
-  timeout_seconds: 30
+  provider: ollama
+  model: llama3.1
+  endpoint: http://localhost:11434
+  timeout_seconds: 120
 
 guardrails:
   min_confidence: 0.75
@@ -178,7 +180,39 @@ report:
     - html
 ```
 
-**Option B: With OpenAI (better accuracy)**
+> **Prerequisite:** Install Ollama and pull the model first:
+> ```bash
+> ollama pull llama3.1 && ollama serve
+> ```
+
+**Option B: Mock - No LLM (for quick demos)**
+
+```yaml
+healer:
+  mode: AUTO_SAFE
+  enabled: true
+
+llm:
+  provider: mock           # Uses heuristic matching - no LLM needed
+  model: heuristic
+  timeout_seconds: 30
+
+guardrails:
+  min_confidence: 0.70
+  max_heals_per_scenario: 10
+
+cache:
+  enabled: true
+  ttl_hours: 24
+
+report:
+  output_dir: target/healer-reports
+  formats:
+    - json
+    - html
+```
+
+**Option C: OpenAI - Cloud API (production)**
 
 ```yaml
 healer:
@@ -305,8 +339,9 @@ healer:
   enabled: true
 
 llm:
-  provider: mock
-  model: heuristic
+  provider: ollama              # Or: mock (no LLM), openai, anthropic
+  model: llama3.1
+  endpoint: http://localhost:11434
 
 cache:
   enabled: true
@@ -376,16 +411,509 @@ Run with: `mvn test -Dtest=SelfHealingTest`
 
 ---
 
-## Mock Provider vs Cloud LLM
+## LLM Provider Options
+
+Intent Healer supports multiple LLM providers. Choose based on your requirements:
 
 | Provider | API Key Required | Cost | Accuracy | Best For |
 |----------|-----------------|------|----------|----------|
-| `mock` | No | Free | Good (heuristic) | Local dev, CI/CD, demos |
-| `ollama` | No | Free | Very Good | Privacy, offline use |
-| `openai` | Yes | ~$0.01/heal | Excellent | Production |
-| `anthropic` | Yes | ~$0.01/heal | Excellent | Production |
+| `ollama` | No | Free | Very Good | **Recommended default** - Local development, privacy |
+| `mock` | No | Free | Good (heuristic) | Quick demos, CI/CD without LLM |
+| `openai` | Yes | ~$0.01/heal | Excellent | Production with cloud AI |
+| `anthropic` | Yes | ~$0.01/heal | Excellent | Production with cloud AI |
+| `azure` | Yes | ~$0.01/heal | Excellent | Enterprise Azure environments |
+| `bedrock` | Yes (AWS) | ~$0.01/heal | Excellent | AWS-based deployments |
 
-**Start with `mock` provider** to test the integration without any API keys. Switch to a cloud provider when you need higher accuracy for production use.
+### Option 1: Ollama (Local LLM) - Recommended Default
+
+Run AI locally on your machine. No API keys, no costs, full privacy.
+
+**Prerequisites:**
+```bash
+# Install Ollama
+# Windows: winget install Ollama.Ollama
+# macOS: brew install ollama
+# Linux: curl -fsSL https://ollama.ai/install.sh | sh
+
+# Pull a model (llama3.1 recommended)
+ollama pull llama3.1
+
+# Start Ollama server
+ollama serve
+```
+
+**Complete healer-config.yml:**
+```yaml
+healer:
+  mode: AUTO_SAFE
+  enabled: true
+
+llm:
+  provider: ollama
+  model: llama3.1
+  endpoint: http://localhost:11434
+  timeout_seconds: 120
+  max_retries: 2
+  temperature: 0.1
+
+guardrails:
+  min_confidence: 0.75
+  max_heals_per_scenario: 10
+
+cache:
+  enabled: true
+  ttl_hours: 24
+
+report:
+  enabled: true
+  output_dir: ./target/healer-reports
+  formats:
+    - json
+    - html
+```
+
+**Available Ollama models:**
+| Model | Size | Speed | Best For |
+|-------|------|-------|----------|
+| `llama3.1` | 8B | Medium | General use (recommended) |
+| `llama3.1:70b` | 70B | Slow | Complex healing, highest accuracy |
+| `mistral` | 7B | Fast | Quick iterations |
+| `codellama` | 7B | Fast | Code-heavy tests |
+| `phi3` | 3.8B | Very Fast | Resource-constrained environments |
+
+---
+
+### Option 2: Mock Provider (Heuristic-Based)
+
+Uses heuristic matching without any LLM. Good for quick demos or CI/CD pipelines where you don't want LLM dependencies.
+
+**Complete healer-config.yml:**
+```yaml
+healer:
+  mode: AUTO_SAFE
+  enabled: true
+
+llm:
+  provider: mock
+  model: heuristic
+  timeout_seconds: 30
+  max_retries: 2
+
+guardrails:
+  min_confidence: 0.70
+  max_heals_per_scenario: 10
+
+cache:
+  enabled: true
+  ttl_hours: 24
+
+report:
+  enabled: true
+  output_dir: ./target/healer-reports
+  formats:
+    - json
+    - html
+```
+
+**Note:** Mock provider uses attribute matching, text similarity, and DOM position heuristics. It works well for common scenarios but cloud/local LLMs provide better accuracy for complex cases.
+
+---
+
+### Option 3: OpenAI (Cloud API)
+
+Use OpenAI's GPT models for highest accuracy.
+
+**Prerequisites:**
+- Get API key from [platform.openai.com](https://platform.openai.com)
+- Set environment variable: `export OPENAI_API_KEY=sk-...`
+
+**Complete healer-config.yml:**
+```yaml
+healer:
+  mode: AUTO_SAFE
+  enabled: true
+
+llm:
+  provider: openai
+  model: gpt-4o-mini          # Cost-effective, or gpt-4 for highest accuracy
+  api_key_env: OPENAI_API_KEY
+  timeout_seconds: 30
+  max_retries: 2
+  temperature: 0.1
+  max_cost_per_run_usd: 5.00
+
+guardrails:
+  min_confidence: 0.80
+  max_heals_per_scenario: 10
+
+cache:
+  enabled: true               # Important: reduces API costs
+  ttl_hours: 24
+
+report:
+  enabled: true
+  output_dir: ./target/healer-reports
+  formats:
+    - json
+    - html
+```
+
+**Available OpenAI models:**
+| Model | Cost | Speed | Best For |
+|-------|------|-------|----------|
+| `gpt-4o-mini` | Low | Fast | Daily use (recommended) |
+| `gpt-4o` | Medium | Medium | Production |
+| `gpt-4` | High | Slow | Highest accuracy |
+
+---
+
+### Option 4: Anthropic (Cloud API)
+
+Use Anthropic's Claude models for excellent reasoning capabilities.
+
+**Prerequisites:**
+- Get API key from [console.anthropic.com](https://console.anthropic.com)
+- Set environment variable: `export ANTHROPIC_API_KEY=sk-ant-...`
+
+**Complete healer-config.yml:**
+```yaml
+healer:
+  mode: AUTO_SAFE
+  enabled: true
+
+llm:
+  provider: anthropic
+  model: claude-3-haiku-20240307    # Fast and cost-effective
+  api_key_env: ANTHROPIC_API_KEY
+  timeout_seconds: 30
+  max_retries: 2
+  temperature: 0.1
+  max_cost_per_run_usd: 5.00
+
+guardrails:
+  min_confidence: 0.80
+  max_heals_per_scenario: 10
+
+cache:
+  enabled: true
+  ttl_hours: 24
+
+report:
+  enabled: true
+  output_dir: ./target/healer-reports
+  formats:
+    - json
+    - html
+```
+
+**Available Anthropic models:**
+| Model | Cost | Speed | Best For |
+|-------|------|-------|----------|
+| `claude-3-haiku-20240307` | Low | Fast | Daily use (recommended) |
+| `claude-3-sonnet-20240229` | Medium | Medium | Production |
+| `claude-3-opus-20240229` | High | Slow | Highest accuracy |
+
+---
+
+### Option 5: Azure OpenAI (Enterprise)
+
+For organizations using Azure cloud services.
+
+**Step 1: Get your Azure OpenAI credentials from Azure Portal:**
+
+1. Go to [Azure Portal](https://portal.azure.com) → your Azure OpenAI resource
+2. Navigate to **Keys and Endpoint** to find:
+   - Endpoint URL (e.g., `https://your-resource.openai.azure.com`)
+   - API Key (Key 1 or Key 2)
+3. Navigate to **Model deployments** to find your deployment name
+
+**Step 2: Set environment variables:**
+
+```bash
+# Required
+export AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com
+export AZURE_OPENAI_API_KEY=your-api-key-here
+export AZURE_OPENAI_DEPLOYMENT=your-deployment-name
+
+# Optional (defaults to 2024-02-15-preview)
+export AZURE_OPENAI_API_VERSION=2024-02-15-preview
+```
+
+**Windows (PowerShell):**
+```powershell
+$env:AZURE_OPENAI_ENDPOINT = "https://your-resource.openai.azure.com"
+$env:AZURE_OPENAI_API_KEY = "your-api-key-here"
+$env:AZURE_OPENAI_DEPLOYMENT = "your-deployment-name"
+```
+
+**Step 3: Create healer-config.yml:**
+
+```yaml
+healer:
+  mode: AUTO_SAFE
+  enabled: true
+
+llm:
+  provider: azure
+  model: gpt-4o-mini              # Must match your deployment's model
+  timeout_seconds: 30
+  max_retries: 2
+  temperature: 0.1
+
+guardrails:
+  min_confidence: 0.80
+  max_heals_per_scenario: 10
+
+cache:
+  enabled: true
+  ttl_hours: 24
+
+report:
+  enabled: true
+  output_dir: ./target/healer-reports
+  formats:
+    - json
+    - html
+```
+
+> **Note:** The provider reads `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_API_KEY`, and `AZURE_OPENAI_DEPLOYMENT` from environment variables automatically. The `model` in YAML should match the model you deployed (e.g., gpt-4o-mini, gpt-4).
+
+---
+
+### Option 6: AWS Bedrock
+
+For organizations using AWS cloud services.
+
+**Step 1: Enable Bedrock model access in AWS Console:**
+
+1. Go to [AWS Bedrock Console](https://console.aws.amazon.com/bedrock)
+2. Navigate to **Model access** → **Manage model access**
+3. Enable access to Claude or other models you want to use
+4. Wait for access to be granted (usually instant for Claude)
+
+**Step 2: Configure AWS credentials:**
+
+```bash
+# Option A: Environment variables
+export AWS_ACCESS_KEY_ID=your-access-key
+export AWS_SECRET_ACCESS_KEY=your-secret-key
+export AWS_REGION=us-east-1
+
+# Option B: AWS credentials file (~/.aws/credentials)
+# [default]
+# aws_access_key_id = your-access-key
+# aws_secret_access_key = your-secret-key
+
+# Option C: IAM role (for EC2/ECS/Lambda - no env vars needed)
+```
+
+**Windows (PowerShell):**
+```powershell
+$env:AWS_ACCESS_KEY_ID = "your-access-key"
+$env:AWS_SECRET_ACCESS_KEY = "your-secret-key"
+$env:AWS_REGION = "us-east-1"
+```
+
+**Step 3: Create healer-config.yml:**
+
+```yaml
+healer:
+  mode: AUTO_SAFE
+  enabled: true
+
+llm:
+  provider: bedrock
+  model: anthropic.claude-3-haiku-20240307-v1:0
+  timeout_seconds: 30
+  max_retries: 2
+  temperature: 0.1
+
+guardrails:
+  min_confidence: 0.80
+  max_heals_per_scenario: 10
+
+cache:
+  enabled: true
+  ttl_hours: 24
+
+report:
+  enabled: true
+  output_dir: ./target/healer-reports
+  formats:
+    - json
+    - html
+```
+
+**Available Bedrock models:**
+| Model ID | Description |
+|----------|-------------|
+| `anthropic.claude-3-haiku-20240307-v1:0` | Fast and cost-effective (recommended) |
+| `anthropic.claude-3-sonnet-20240229-v1:0` | Balanced performance |
+| `anthropic.claude-3-opus-20240229-v1:0` | Highest accuracy |
+| `amazon.titan-text-express-v1` | Amazon's model |
+
+> **Note:** The provider reads AWS credentials from environment variables, `~/.aws/credentials`, or IAM role automatically. Set `AWS_REGION` to your Bedrock region (e.g., us-east-1, us-west-2, eu-west-1).
+
+---
+
+### Fallback Configuration
+
+Configure multiple providers for reliability:
+
+```yaml
+llm:
+  provider: ollama
+  model: llama3.1
+  endpoint: http://localhost:11434
+  timeout_seconds: 120
+
+  # Fallback chain: tried in order if primary fails
+  fallback:
+    - provider: openai
+      model: gpt-4o-mini
+      api_key_env: OPENAI_API_KEY
+    - provider: anthropic
+      model: claude-3-haiku-20240307
+      api_key_env: ANTHROPIC_API_KEY
+```
+
+---
+
+## Java Agent (Zero-Code Integration)
+
+**The easiest way to add self-healing to your project - no code changes required!**
+
+The Intent Healer Java Agent automatically intercepts all WebDriver instances and adds self-healing capability. Just add a JVM argument and you're done.
+
+### Why Use the Java Agent?
+
+| Approach | Code Changes | Effort | Best For |
+|----------|--------------|--------|----------|
+| **Java Agent** | None | Minimal | Existing projects, quick setup |
+| Manual wrapping | Modify test setup | Medium | Custom control, new projects |
+
+### Step 1: Build or Download the Agent JAR
+
+```bash
+# Build from source
+mvn clean install -pl healer-agent
+
+# The fat JAR is at: healer-agent/target/healer-agent-1.0.0-SNAPSHOT.jar
+```
+
+### Step 2: Create Configuration File
+
+Create `src/test/resources/healer-config.yml`:
+
+```yaml
+healer:
+  mode: AUTO_SAFE
+  enabled: true      # Set to false to disable without removing agent
+
+llm:
+  provider: ollama   # Recommended: local LLM (or openai, anthropic, mock)
+  model: llama3.1
+  endpoint: http://localhost:11434
+  timeout_seconds: 120
+
+cache:
+  enabled: true
+  ttl_hours: 24
+```
+
+> **Note:** See [LLM Provider Options](#llm-provider-options) for complete configuration examples for each provider.
+
+### Step 3: Add Agent to JVM Arguments
+
+**Option A: Maven Surefire Plugin**
+
+```xml
+<plugin>
+    <groupId>org.apache.maven.plugins</groupId>
+    <artifactId>maven-surefire-plugin</artifactId>
+    <configuration>
+        <argLine>
+            -javaagent:${project.basedir}/../healer-agent/target/healer-agent-1.0.0-SNAPSHOT.jar
+        </argLine>
+    </configuration>
+</plugin>
+```
+
+**Option B: Command Line**
+
+```bash
+mvn test -DargLine="-javaagent:/path/to/healer-agent-1.0.0-SNAPSHOT.jar"
+```
+
+**Option C: Gradle**
+
+```kotlin
+test {
+    jvmArgs("-javaagent:${rootProject.projectDir}/healer-agent/build/libs/healer-agent-1.0.0-SNAPSHOT.jar")
+}
+```
+
+**Option D: Direct JVM Execution**
+
+```bash
+java -javaagent:healer-agent-1.0.0-SNAPSHOT.jar \
+     -jar your-test-runner.jar
+```
+
+### Step 4: Run Your Tests
+
+```bash
+mvn test
+```
+
+When the agent starts, you'll see a banner:
+
+```
++===============================================================+
+|           INTENT HEALER AGENT - ACTIVE                        |
++---------------------------------------------------------------+
+|  Mode:       AUTO_SAFE                                        |
+|  Provider:   ollama                                           |
+|  Model:      llama3.1                                         |
+|  Healing:    ENABLED                                          |
++===============================================================+
+
+  Self-healing is active for all WebDriver instances.
+  Broken locators will be automatically fixed at runtime.
+```
+
+### Supported WebDriver Types
+
+The agent automatically intercepts:
+
+- `ChromeDriver`
+- `FirefoxDriver`
+- `EdgeDriver`
+- `SafariDriver`
+- `RemoteWebDriver`
+- Any custom class extending `RemoteWebDriver`
+
+### Disabling the Agent
+
+**Option 1: Configuration** (recommended)
+
+Set `healer.enabled: false` in `healer-config.yml`
+
+**Option 2: Remove JVM Argument**
+
+Simply remove the `-javaagent` argument from your test configuration.
+
+### Agent vs Manual Integration
+
+The Java Agent approach is best when:
+- You want zero code changes to your test project
+- You have an existing project with many tests
+- You want to quickly evaluate Intent Healer
+
+Use manual HealingWebDriver wrapping when:
+- You need fine-grained control over healing
+- You want to set custom intent contexts per test
+- You're building a new project from scratch
 
 ---
 

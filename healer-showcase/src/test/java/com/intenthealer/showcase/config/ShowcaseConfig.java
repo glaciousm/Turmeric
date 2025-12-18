@@ -2,11 +2,6 @@ package com.intenthealer.showcase.config;
 
 import com.intenthealer.core.config.ConfigLoader;
 import com.intenthealer.core.config.HealerConfig;
-import com.intenthealer.core.engine.HealingEngine;
-import com.intenthealer.core.model.IntentContract;
-import com.intenthealer.llm.LlmOrchestrator;
-import com.intenthealer.selenium.driver.HealingWebDriver;
-import com.intenthealer.selenium.snapshot.SnapshotBuilder;
 import io.github.bonigarcia.wdm.WebDriverManager;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
@@ -17,14 +12,20 @@ import org.slf4j.LoggerFactory;
 /**
  * Configuration for Intent Healer Showcase.
  *
- * This class demonstrates how to integrate Intent Healer into any
- * Selenium-based test automation project.
+ * <p>This class demonstrates the ZERO-CODE Java Agent integration approach.
+ * No HealingWebDriver wrapping is needed - the Java Agent automatically
+ * intercepts all WebDriver instances and adds self-healing capability.</p>
  *
- * Key integration points:
- * 1. Load HealerConfig from YAML or programmatically
- * 2. Create HealingEngine with config
- * 3. Set up LLM provider (mock for demo, real for production)
- * 4. Wrap WebDriver with HealingWebDriver
+ * <h2>How it works:</h2>
+ * <ol>
+ *   <li>The Java Agent is loaded via JVM argument (-javaagent)</li>
+ *   <li>When ChromeDriver is created, the agent automatically registers it</li>
+ *   <li>When findElement() fails, the agent intercepts and heals</li>
+ *   <li>No code changes required in your tests!</li>
+ * </ol>
+ *
+ * <h2>Configuration:</h2>
+ * <p>The agent reads healer-config.yml from src/test/resources/</p>
  */
 public class ShowcaseConfig {
 
@@ -32,21 +33,13 @@ public class ShowcaseConfig {
     private static ShowcaseConfig instance;
 
     private final HealerConfig config;
-    private final HealingEngine healingEngine;
-    private final LlmOrchestrator llmOrchestrator;
-    private HealingWebDriver driver;
+    private WebDriver driver;
 
     private ShowcaseConfig() {
-        // Load configuration from YAML file or use defaults
+        // Load configuration from YAML file (for display purposes)
         this.config = new ConfigLoader().load();
 
-        // Initialize LLM orchestrator
-        this.llmOrchestrator = new LlmOrchestrator();
-
-        // Initialize healing engine
-        this.healingEngine = new HealingEngine(config);
-
-        logger.info("Intent Healer Showcase initialized");
+        logger.info("Intent Healer Showcase initialized (Java Agent mode)");
         logger.info("Mode: {}", config.getMode());
         logger.info("LLM Provider: {}", config.getLlm().getProvider());
     }
@@ -59,12 +52,14 @@ public class ShowcaseConfig {
     }
 
     /**
-     * Creates a HealingWebDriver that wraps a standard WebDriver.
+     * Creates a standard WebDriver.
      *
-     * This is the key integration point - instead of using WebDriver directly,
-     * you wrap it with HealingWebDriver to enable self-healing.
+     * <p>The Java Agent automatically intercepts this driver and adds
+     * self-healing capability. No HealingWebDriver wrapper needed!</p>
+     *
+     * @return a WebDriver instance with automatic self-healing
      */
-    public HealingWebDriver createDriver() {
+    public WebDriver createDriver() {
         // Set up ChromeDriver using WebDriverManager
         WebDriverManager.chromedriver().setup();
 
@@ -75,17 +70,8 @@ public class ShowcaseConfig {
         options.addArguments("--disable-dev-shm-usage");
         options.addArguments("--remote-allow-origins=*");
 
-        WebDriver chromeDriver = new ChromeDriver(options);
-        this.driver = new HealingWebDriver(chromeDriver, healingEngine, config);
-
-        // Configure healing engine with snapshot capture and LLM evaluator
-        // IMPORTANT: Use the base chromeDriver for snapshots, not the HealingWebDriver
-        SnapshotBuilder snapshotBuilder = new SnapshotBuilder(chromeDriver);
-        healingEngine.setSnapshotCapture(failure -> snapshotBuilder.captureAll());
-        healingEngine.setLlmEvaluator((failure, snapshot) -> {
-            IntentContract intent = IntentContract.defaultContract(failure.getStepText());
-            return llmOrchestrator.evaluateCandidates(failure, snapshot, intent, config.getLlm());
-        });
+        // Just create a regular ChromeDriver - the agent handles the rest!
+        this.driver = new ChromeDriver(options);
 
         printBanner();
 
@@ -93,17 +79,22 @@ public class ShowcaseConfig {
     }
 
     private void printBanner() {
+        System.out.println();
         System.out.println("============================================================");
-        System.out.println("  Intent Healer - Self-Healing Selenium Framework");
+        System.out.println("  Intent Healer Showcase - ZERO-CODE Integration Demo");
         System.out.println("============================================================");
+        System.out.println("  Integration:   Java Agent (no code changes needed!)");
         System.out.println("  Mode:          " + config.getMode());
         System.out.println("  LLM Provider:  " + config.getLlm().getProvider());
-        System.out.println("  Auto-Healing:  ENABLED");
+        System.out.println("  Auto-Healing:  ENABLED (via agent interception)");
         System.out.println("============================================================");
+        System.out.println();
+        System.out.println("  This demo uses regular WebDriver - NO HealingWebDriver!");
+        System.out.println("  The Java Agent automatically adds self-healing.");
         System.out.println();
     }
 
-    public HealingWebDriver getDriver() {
+    public WebDriver getDriver() {
         if (driver == null) {
             return createDriver();
         }
