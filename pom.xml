@@ -52,11 +52,11 @@
         <module>healer-report</module>
         <module>healer-cli</module>
         <module>healer-agent</module>
-        <module>healer-example</module>
         <module>healer-testng</module>
         <module>healer-junit</module>
         <module>healer-showcase</module>
         <module>healer-benchmark</module>
+        <!-- healer-example removed - redundant with healer-showcase -->
         <!-- healer-intellij requires IntelliJ SDK - build separately with Gradle or activate with -Pbuild-intellij-plugin -->
     </modules>
 
