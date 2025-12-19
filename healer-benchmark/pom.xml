@@ -4,7 +4,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>com.intenthealer</groupId>
+        <groupId>io.github.glaciousm</groupId>
         <artifactId>intent-healer</artifactId>
         <version>1.0.0-SNAPSHOT</version>
     </parent>
@@ -16,17 +16,17 @@
     <dependencies>
         <!-- Internal dependencies -->
         <dependency>
-            <groupId>com.intenthealer</groupId>
+            <groupId>io.github.glaciousm</groupId>
             <artifactId>healer-core</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>com.intenthealer</groupId>
+            <groupId>io.github.glaciousm</groupId>
             <artifactId>healer-llm</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>com.intenthealer</groupId>
+            <groupId>io.github.glaciousm</groupId>
             <artifactId>healer-selenium</artifactId>
             <version>${project.version}</version>
         </dependency>
@@ -97,7 +97,7 @@
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>3.1.1</version>
                 <configuration>
-                    <mainClass>com.intenthealer.benchmark.BenchmarkRunner</mainClass>
+                    <mainClass>io.github.glaciousm.benchmark.BenchmarkRunner</mainClass>
                 </configuration>
             </plugin>
             <plugin>

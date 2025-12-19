@@ -4,7 +4,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>com.intenthealer</groupId>
+        <groupId>io.github.glaciousm</groupId>
         <artifactId>intent-healer</artifactId>
         <version>1.0.0-SNAPSHOT</version>
     </parent>
@@ -20,17 +20,17 @@
     <dependencies>
         <!-- Intent Healer modules -->
         <dependency>
-            <groupId>com.intenthealer</groupId>
+            <groupId>io.github.glaciousm</groupId>
             <artifactId>healer-core</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>com.intenthealer</groupId>
+            <groupId>io.github.glaciousm</groupId>
             <artifactId>healer-selenium</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>com.intenthealer</groupId>
+            <groupId>io.github.glaciousm</groupId>
             <artifactId>healer-llm</artifactId>
             <version>${project.version}</version>
         </dependency>
@@ -112,8 +112,8 @@
                             <transformers>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                                     <manifestEntries>
-                                        <Premain-Class>com.intenthealer.agent.HealerAgent</Premain-Class>
-                                        <Agent-Class>com.intenthealer.agent.HealerAgent</Agent-Class>
+                                        <Premain-Class>io.github.glaciousm.agent.HealerAgent</Premain-Class>
+                                        <Agent-Class>io.github.glaciousm.agent.HealerAgent</Agent-Class>
                                         <Can-Redefine-Classes>true</Can-Redefine-Classes>
                                         <Can-Retransform-Classes>true</Can-Retransform-Classes>
                                     </manifestEntries>
@@ -135,7 +135,7 @@
                             <relocations>
                                 <relocation>
                                     <pattern>net.bytebuddy</pattern>
-                                    <shadedPattern>com.intenthealer.shaded.bytebuddy</shadedPattern>
+                                    <shadedPattern>io.github.glaciousm.shaded.bytebuddy</shadedPattern>
                                 </relocation>
                             </relocations>
                         </configuration>
