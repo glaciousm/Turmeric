@@ -228,7 +228,7 @@ Advanced features for production use and enterprise reporting.
 Java Agent for automatic self-healing without any code changes.
 
 ### 8.1 Java Agent Implementation - Done
-**Location:** `healer-agent/src/main/java/com/intenthealer/agent/`
+**Location:** `healer-agent/src/main/java/io/github/glaciousm/agent/`
 - `HealerAgent.java` - Agent entry point with premain()
 - `WebDriverConstructorAdvice.java` - Registers drivers on construction
 - `WebDriverInterceptor.java` - Intercepts findElement() for healing

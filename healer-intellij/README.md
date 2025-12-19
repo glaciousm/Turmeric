@@ -59,7 +59,7 @@ Configure the plugin at: `Settings` → `Tools` → `Intent Healer`
 ```
 healer-intellij/
 ├── src/main/java/
-│   └── com/intenthealer/intellij/
+│   └── io/github/glaciousm/intellij/
 │       ├── actions/          # IDE actions
 │       ├── services/         # Project services
 │       ├── settings/         # Plugin settings

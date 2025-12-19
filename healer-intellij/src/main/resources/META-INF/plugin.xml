@@ -1,7 +1,7 @@
 <idea-plugin>
-    <id>com.intenthealer.intellij</id>
+    <id>io.github.glaciousm.intellij</id>
     <name>Intent Healer</name>
-    <vendor email="support@intenthealer.com" url="https://intenthealer.com">Intent Healer</vendor>
+    <vendor email="mmamouzellos@gmail.com" url="https://glaciousm.io">Intent Healer</vendor>
 
     <description><![CDATA[
         <p>Intent Healer plugin for IntelliJ IDEA - LLM-powered self-healing for Selenium tests.</p>
@@ -32,21 +32,21 @@
         <toolWindow id="Intent Healer"
                     secondary="true"
                     anchor="right"
-                    factoryClass="com.intenthealer.intellij.ui.HealerToolWindowFactory"/>
+                    factoryClass="io.github.glaciousm.intellij.ui.HealerToolWindowFactory"/>
 
         <!-- Settings -->
         <applicationConfigurable
                 parentId="tools"
-                instance="com.intenthealer.intellij.settings.HealerSettingsConfigurable"
-                id="com.intenthealer.intellij.settings"
+                instance="io.github.glaciousm.intellij.settings.HealerSettingsConfigurable"
+                id="io.github.glaciousm.intellij.settings"
                 displayName="Intent Healer"/>
 
         <applicationService
-                serviceImplementation="com.intenthealer.intellij.settings.HealerSettings"/>
+                serviceImplementation="io.github.glaciousm.intellij.settings.HealerSettings"/>
 
         <!-- Project Service -->
         <projectService
-                serviceImplementation="com.intenthealer.intellij.services.HealerProjectService"/>
+                serviceImplementation="io.github.glaciousm.intellij.services.HealerProjectService"/>
 
         <!-- Notifications -->
         <notificationGroup id="Intent Healer Notifications"
@@ -56,7 +56,7 @@
         <!-- Line Markers for @Intent annotations -->
         <codeInsight.lineMarkerProvider
                 language="JAVA"
-                implementationClass="com.intenthealer.intellij.ui.IntentLineMarkerProvider"/>
+                implementationClass="io.github.glaciousm.intellij.ui.IntentLineMarkerProvider"/>
     </extensions>
 
     <actions>
@@ -65,24 +65,24 @@
             <add-to-group group-id="ToolsMenu" anchor="last"/>
 
             <action id="IntentHealer.OpenDashboard"
-                    class="com.intenthealer.intellij.actions.OpenDashboardAction"
+                    class="io.github.glaciousm.intellij.actions.OpenDashboardAction"
                     text="Open Dashboard"
                     description="Open the Intent Healer dashboard"/>
 
             <action id="IntentHealer.ViewHistory"
-                    class="com.intenthealer.intellij.actions.ViewHistoryAction"
+                    class="io.github.glaciousm.intellij.actions.ViewHistoryAction"
                     text="View Heal History"
                     description="View recent heal history"/>
 
             <separator/>
 
             <action id="IntentHealer.RefreshCache"
-                    class="com.intenthealer.intellij.actions.RefreshCacheAction"
+                    class="io.github.glaciousm.intellij.actions.RefreshCacheAction"
                     text="Refresh Cache"
                     description="Refresh heal cache from disk"/>
 
             <action id="IntentHealer.ClearCache"
-                    class="com.intenthealer.intellij.actions.ClearCacheAction"
+                    class="io.github.glaciousm.intellij.actions.ClearCacheAction"
                     text="Clear Cache"
                     description="Clear all cached heals"/>
         </group>
@@ -92,7 +92,7 @@
             <add-to-group group-id="EditorPopupMenu" anchor="last"/>
 
             <action id="IntentHealer.SuggestLocator"
-                    class="com.intenthealer.intellij.actions.SuggestLocatorAction"
+                    class="io.github.glaciousm.intellij.actions.SuggestLocatorAction"
                     text="Suggest Stable Locator"
                     description="Suggest a more stable locator for this element"/>
         </group>

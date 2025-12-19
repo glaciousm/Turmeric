@@ -32,17 +32,17 @@ Intent Healer is an intelligent test automation framework that automatically fix
 ```xml
 <!-- Required dependencies -->
 <dependency>
-    <groupId>com.intenthealer</groupId>
+    <groupId>io.github.glaciousm</groupId>
     <artifactId>healer-core</artifactId>
     <version>1.0.0-SNAPSHOT</version>
 </dependency>
 <dependency>
-    <groupId>com.intenthealer</groupId>
+    <groupId>io.github.glaciousm</groupId>
     <artifactId>healer-selenium</artifactId>
     <version>1.0.0-SNAPSHOT</version>
 </dependency>
 <dependency>
-    <groupId>com.intenthealer</groupId>
+    <groupId>io.github.glaciousm</groupId>
     <artifactId>healer-llm</artifactId>
     <version>1.0.0-SNAPSHOT</version>
 </dependency>
@@ -273,7 +273,7 @@ Add the report plugin to your Cucumber runner:
 ```java
 @ConfigurationParameter(
     key = PLUGIN_PROPERTY_NAME,
-    value = "com.intenthealer.cucumber.report.HealerCucumberReportPlugin:target/healer-report.html"
+    value = "io.github.glaciousm.cucumber.report.HealerCucumberReportPlugin:target/healer-report.html"
 )
 ```
 

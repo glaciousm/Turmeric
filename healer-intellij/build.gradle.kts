@@ -3,7 +3,7 @@ plugins {
     id("org.jetbrains.intellij") version "1.16.1"
 }
 
-group = "com.intenthealer"
+group = "io.github.glaciousm"
 version = "1.0.0-SNAPSHOT"
 
 repositories {
@@ -13,7 +13,7 @@ repositories {
 
 dependencies {
     // Reference healer-core from Maven local repository
-    implementation("com.intenthealer:healer-core:1.0.0-SNAPSHOT")
+    implementation("io.github.glaciousm:healer-core:1.0.0-SNAPSHOT")
     implementation("com.fasterxml.jackson.core:jackson-databind:2.16.0")
     implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.16.0")
 }

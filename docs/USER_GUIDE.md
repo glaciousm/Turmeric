@@ -81,7 +81,7 @@ This section shows you how to integrate Intent Healer into your existing Seleniu
 <dependencies>
     <!-- Intent Healer Core (required) -->
     <dependency>
-        <groupId>com.intenthealer</groupId>
+        <groupId>io.github.glaciousm</groupId>
         <artifactId>healer-core</artifactId>
         <version>1.0.0-SNAPSHOT</version>
         <scope>test</scope>
@@ -89,7 +89,7 @@ This section shows you how to integrate Intent Healer into your existing Seleniu
 
     <!-- Intent Healer Selenium Integration (required) -->
     <dependency>
-        <groupId>com.intenthealer</groupId>
+        <groupId>io.github.glaciousm</groupId>
         <artifactId>healer-selenium</artifactId>
         <version>1.0.0-SNAPSHOT</version>
         <scope>test</scope>
@@ -97,7 +97,7 @@ This section shows you how to integrate Intent Healer into your existing Seleniu
 
     <!-- Intent Healer LLM Providers (required for AI healing) -->
     <dependency>
-        <groupId>com.intenthealer</groupId>
+        <groupId>io.github.glaciousm</groupId>
         <artifactId>healer-llm</artifactId>
         <version>1.0.0-SNAPSHOT</version>
         <scope>test</scope>
@@ -106,7 +106,7 @@ This section shows you how to integrate Intent Healer into your existing Seleniu
     <!-- Optional: Framework-specific integration -->
     <!-- For Cucumber -->
     <dependency>
-        <groupId>com.intenthealer</groupId>
+        <groupId>io.github.glaciousm</groupId>
         <artifactId>healer-cucumber</artifactId>
         <version>1.0.0-SNAPSHOT</version>
         <scope>test</scope>
@@ -114,7 +114,7 @@ This section shows you how to integrate Intent Healer into your existing Seleniu
 
     <!-- OR for JUnit 5 -->
     <dependency>
-        <groupId>com.intenthealer</groupId>
+        <groupId>io.github.glaciousm</groupId>
         <artifactId>healer-junit</artifactId>
         <version>1.0.0-SNAPSHOT</version>
         <scope>test</scope>
@@ -122,7 +122,7 @@ This section shows you how to integrate Intent Healer into your existing Seleniu
 
     <!-- OR for TestNG -->
     <dependency>
-        <groupId>com.intenthealer</groupId>
+        <groupId>io.github.glaciousm</groupId>
         <artifactId>healer-testng</artifactId>
         <version>1.0.0-SNAPSHOT</version>
         <scope>test</scope>
@@ -135,16 +135,16 @@ This section shows you how to integrate Intent Healer into your existing Seleniu
 ```kotlin
 dependencies {
     // Required dependencies
-    testImplementation("com.intenthealer:healer-core:1.0.0-SNAPSHOT")
-    testImplementation("com.intenthealer:healer-selenium:1.0.0-SNAPSHOT")
-    testImplementation("com.intenthealer:healer-llm:1.0.0-SNAPSHOT")
+    testImplementation("io.github.glaciousm:healer-core:1.0.0-SNAPSHOT")
+    testImplementation("io.github.glaciousm:healer-selenium:1.0.0-SNAPSHOT")
+    testImplementation("io.github.glaciousm:healer-llm:1.0.0-SNAPSHOT")
 
     // Optional: Choose your test framework integration
-    testImplementation("com.intenthealer:healer-cucumber:1.0.0-SNAPSHOT")  // For Cucumber
+    testImplementation("io.github.glaciousm:healer-cucumber:1.0.0-SNAPSHOT")  // For Cucumber
     // OR
-    testImplementation("com.intenthealer:healer-junit:1.0.0-SNAPSHOT")     // For JUnit 5
+    testImplementation("io.github.glaciousm:healer-junit:1.0.0-SNAPSHOT")     // For JUnit 5
     // OR
-    testImplementation("com.intenthealer:healer-testng:1.0.0-SNAPSHOT")    // For TestNG
+    testImplementation("io.github.glaciousm:healer-testng:1.0.0-SNAPSHOT")    // For TestNG
 }
 ```
 
@@ -261,10 +261,10 @@ ollama serve
 **This is the key integration step.** Replace your regular WebDriver with HealingWebDriver:
 
 ```java
-import com.intenthealer.core.config.ConfigLoader;
-import com.intenthealer.core.config.HealerConfig;
-import com.intenthealer.core.engine.HealingEngine;
-import com.intenthealer.selenium.driver.HealingWebDriver;
+import io.github.glaciousm.core.config.ConfigLoader;
+import io.github.glaciousm.core.config.HealerConfig;
+import io.github.glaciousm.core.engine.HealingEngine;
+import io.github.glaciousm.selenium.driver.HealingWebDriver;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
 
@@ -355,10 +355,10 @@ report:
 ```java
 package com.example;
 
-import com.intenthealer.core.config.ConfigLoader;
-import com.intenthealer.core.config.HealerConfig;
-import com.intenthealer.core.engine.HealingEngine;
-import com.intenthealer.selenium.driver.HealingWebDriver;
+import io.github.glaciousm.core.config.ConfigLoader;
+import io.github.glaciousm.core.config.HealerConfig;
+import io.github.glaciousm.core.engine.HealingEngine;
+import io.github.glaciousm.selenium.driver.HealingWebDriver;
 import org.junit.jupiter.api.*;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
@@ -1511,7 +1511,7 @@ ollama serve
     plugin = {
         "pretty",
         "html:build/cucumber-reports",
-        "com.intenthealer.cucumber.HealerCucumberPlugin"  // Add this
+        "io.github.glaciousm.cucumber.HealerCucumberPlugin"  // Add this
     }
 )
 @RunWith(Cucumber.class)
@@ -1621,7 +1621,7 @@ public class LoginTest {
 <!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
 <suite name="Test Suite">
     <listeners>
-        <listener class-name="com.intenthealer.testng.HealerTestListener"/>
+        <listener class-name="io.github.glaciousm.testng.HealerTestListener"/>
     </listeners>
 
     <test name="Login Tests">
@@ -2247,7 +2247,7 @@ mvn test
 View detailed logs with SLF4J:
 ```xml
 <!-- In logback.xml -->
-<logger name="com.intenthealer" level="DEBUG"/>
+<logger name="io.github.glaciousm" level="DEBUG"/>
 ```
 
 ### Getting Help
@@ -2256,7 +2256,7 @@ View detailed logs with SLF4J:
 2. Review heal history in IDE plugin
 3. Run `healer config validate` to check configuration
 4. Enable debug mode for detailed diagnostics
-5. Check the [GitHub Issues](https://github.com/intenthealer/intent-healer/issues) for known problems
+5. Check the [GitHub Issues](https://github.io/github/glaciousm/intent-healer/issues) for known problems
 6. File a bug report with:
    - Healer configuration (with API keys redacted)
    - Error message and stack trace

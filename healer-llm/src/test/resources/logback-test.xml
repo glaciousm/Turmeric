@@ -6,8 +6,8 @@
         </encoder>
     </appender>
 
-    <!-- INFO level for all intenthealer packages (no DEBUG noise) -->
-    <logger name="com.intenthealer" level="INFO"/>
+    <!-- INFO level for all glaciousm packages (no DEBUG noise) -->
+    <logger name="io.github.glaciousm" level="INFO"/>
 
     <root level="INFO">
         <appender-ref ref="STDOUT"/>

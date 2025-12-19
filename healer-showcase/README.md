@@ -97,7 +97,7 @@ All 10 showcase tests pass successfully, demonstrating healing across various lo
 [INFO] -------------------------------------------------------
 [INFO]  T E S T S
 [INFO] -------------------------------------------------------
-[INFO] Running com.intenthealer.showcase.runners.ShowcaseRunner
+[INFO] Running io.github.glaciousm.showcase.runners.ShowcaseRunner
 
 ============================================================
   Intent Healer Showcase - ZERO-CODE Integration Demo
@@ -223,12 +223,12 @@ healer-showcase/
 ├── pom.xml                                    # Maven config with Java Agent
 ├── README.md                                  # This file
 │
-├── src/main/java/com/intenthealer/showcase/
+├── src/main/java/io/github/glaciousm/showcase/
 │   └── pages/
 │       └── HerokuappPages.java               # Page Objects (wrong locators)
 │
 └── src/test/
-    ├── java/com/intenthealer/showcase/
+    ├── java/io/github/glaciousm/showcase/
     │   ├── config/
     │   │   └── ShowcaseConfig.java           # Regular WebDriver setup
     │   ├── hooks/
