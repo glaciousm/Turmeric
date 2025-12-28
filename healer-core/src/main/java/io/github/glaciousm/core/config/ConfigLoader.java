@@ -114,32 +114,49 @@ public class ConfigLoader {
     }
 
     private void loadFromFile(HealerConfig config) {
+        // DIAGNOSTIC: Print current working directory
+        System.err.println("[Intent Healer] ConfigLoader - Working directory: " + new File(".").getAbsolutePath());
+
         for (String location : CONFIG_LOCATIONS) {
             File file = new File(location);
+            System.err.println("[Intent Healer] ConfigLoader - Checking: " + file.getAbsolutePath() + " exists=" + file.exists());
             if (file.exists() && file.isFile()) {
                 logger.info("Loading configuration from: {}", file.getAbsolutePath());
+                System.err.println("[Intent Healer] ConfigLoader - FOUND config at: " + file.getAbsolutePath());
                 try {
                     HealerConfigWrapper wrapper = yamlMapper.readValue(file, HealerConfigWrapper.class);
                     if (wrapper.healer != null) {
+                        System.err.println("[Intent Healer] ConfigLoader - Parsed enabled=" + wrapper.healer.isEnabled());
                         mergeConfig(config, wrapper.healer);
+                    } else {
+                        System.err.println("[Intent Healer] ConfigLoader - WARNING: wrapper.healer is NULL!");
                     }
                     return;
                 } catch (IOException e) {
+                    System.err.println("[Intent Healer] ConfigLoader - Failed to parse: " + e.getMessage());
                     logger.warn("Failed to load configuration from {}: {}", location, e.getMessage());
                 }
             }
         }
 
         // Try classpath
+        System.err.println("[Intent Healer] ConfigLoader - Trying classpath...");
         try (InputStream is = getClass().getClassLoader().getResourceAsStream("healer-config.yml")) {
             if (is != null) {
                 logger.info("Loading configuration from classpath: healer-config.yml");
+                System.err.println("[Intent Healer] ConfigLoader - FOUND config on classpath");
                 HealerConfigWrapper wrapper = yamlMapper.readValue(is, HealerConfigWrapper.class);
                 if (wrapper.healer != null) {
+                    System.err.println("[Intent Healer] ConfigLoader - Classpath config enabled=" + wrapper.healer.isEnabled());
                     mergeConfig(config, wrapper.healer);
+                } else {
+                    System.err.println("[Intent Healer] ConfigLoader - WARNING: classpath wrapper.healer is NULL!");
                 }
+            } else {
+                System.err.println("[Intent Healer] ConfigLoader - NOT found on classpath");
             }
         } catch (IOException e) {
+            System.err.println("[Intent Healer] ConfigLoader - Classpath load failed: " + e.getMessage());
             logger.debug("No classpath configuration found");
         }
     }

@@ -181,7 +181,7 @@ public class HealingReportGenerator {
                             color: white;
                             width: 24px;
                             height: 24px;
-                            border-radius: 50%;
+                            border-radius: 50%%;
                             text-align: center;
                             line-height: 24px;
                             font-size: 0.75rem;
@@ -231,6 +231,52 @@ public class HealingReportGenerator {
                             color: var(--muted);
                             margin-top: 0.5rem;
                         }
+                        .screenshots {
+                            margin-top: 1rem;
+                            border-top: 1px solid var(--border);
+                            padding-top: 1rem;
+                        }
+                        .screenshots-toggle {
+                            background: #e2e8f0;
+                            color: var(--text);
+                            border: none;
+                            padding: 0.5rem 1rem;
+                            border-radius: 6px;
+                            cursor: pointer;
+                            font-size: 0.75rem;
+                            margin-bottom: 0.5rem;
+                        }
+                        .screenshots-toggle:hover { background: #cbd5e1; }
+                        .screenshots-content {
+                            display: none;
+                        }
+                        .screenshots-content.visible {
+                            display: block;
+                        }
+                        .screenshot-comparison {
+                            display: grid;
+                            grid-template-columns: 1fr 1fr;
+                            gap: 1rem;
+                            margin-top: 0.5rem;
+                        }
+                        .screenshot-box {
+                            text-align: center;
+                        }
+                        .screenshot-box .label {
+                            margin-bottom: 0.5rem;
+                        }
+                        .screenshot-box img {
+                            max-width: 100%%;
+                            border: 1px solid var(--border);
+                            border-radius: 6px;
+                            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                        }
+                        .screenshot-box.before img {
+                            border-color: #ef4444;
+                        }
+                        .screenshot-box.after img {
+                            border-color: var(--success);
+                        }
                         footer {
                             text-align: center;
                             padding: 2rem;
@@ -267,9 +313,10 @@ public class HealingReportGenerator {
         int index = 1;
         for (HealingSummary.HealedLocator heal : heals) {
             String confidenceClass = heal.confidence() >= 0.9 ? "high" : heal.confidence() >= 0.75 ? "medium" : "low";
-            String stepText = escapeHtml(heal.stepText() != null ? heal.stepText() : "Unknown step");
-            String originalLocator = escapeHtml(heal.originalLocator());
-            String healedLocator = escapeHtml(heal.healedLocator());
+            // Escape for HTML first, then escape % for String.format
+            String stepText = escapeForFormat(escapeHtml(heal.stepText() != null ? heal.stepText() : "Unknown step"));
+            String originalLocator = escapeForFormat(escapeHtml(heal.originalLocator()));
+            String healedLocator = escapeForFormat(escapeHtml(heal.healedLocator()));
 
             html.append("""
                     <div class="heal-card">
@@ -291,7 +338,28 @@ public class HealingReportGenerator {
             if (heal.sourceFile() != null && !heal.sourceFile().isEmpty()) {
                 html.append("""
                         <div class="source-location">Location: %s:%d</div>
-                        """.formatted(escapeHtml(heal.sourceFile()), heal.lineNumber()));
+                        """.formatted(escapeForFormat(escapeHtml(heal.sourceFile())), heal.lineNumber()));
+            }
+
+            // Add screenshots if available
+            if (heal.hasVisualEvidence()) {
+                html.append("""
+                        <div class="screenshots">
+                            <button class="screenshots-toggle" onclick="toggleScreenshots('screenshots-%d')">Show/Hide Screenshots</button>
+                            <div class="screenshots-content" id="screenshots-%d">
+                                <div class="screenshot-comparison">
+                                    <div class="screenshot-box before">
+                                        <div class="label">Before (Failed)</div>
+                                        <img src="data:image/png;base64,%s" alt="Before healing" />
+                                    </div>
+                                    <div class="screenshot-box after">
+                                        <div class="label">After (Healed)</div>
+                                        <img src="data:image/png;base64,%s" alt="After healing" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        """.formatted(index, index, heal.beforeScreenshotBase64(), heal.afterScreenshotBase64()));
             }
 
             html.append("</div>\n");
@@ -311,6 +379,12 @@ public class HealingReportGenerator {
                                 alert('Copied to clipboard!');
                             });
                         }
+                        function toggleScreenshots(id) {
+                            const el = document.getElementById(id);
+                            if (el) {
+                                el.classList.toggle('visible');
+                            }
+                        }
                     </script>
                 </body>
                 </html>
@@ -327,5 +401,13 @@ public class HealingReportGenerator {
                 .replace(">", "&gt;")
                 .replace("\"", "&quot;")
                 .replace("'", "&#39;");
+    }
+
+    /**
+     * Escape % characters for use with String.format()
+     */
+    private String escapeForFormat(String text) {
+        if (text == null) return "";
+        return text.replace("%", "%%");
     }
 }

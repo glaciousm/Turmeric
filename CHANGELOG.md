@@ -5,6 +5,47 @@ All notable changes to Intent Healer will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.5] - 2025-12-23
+
+### Added
+- **Visual Evidence in HTML Reports**: Screenshots captured before and after healing are now displayed in HTML reports
+  - Side-by-side comparison view with "Before (Failed)" and "After (Healed)" screenshots
+  - Toggle button to show/hide screenshots for each healed locator
+  - Red border for failed state, green border for healed state
+- **Healed Locator Caching**: Cache healed locators to avoid repeated LLM calls for the same broken locator
+  - `healedLocatorCache` in `AutoConfigurator` stores successful heals
+  - Automatic cache invalidation when cached locator no longer works
+- **Diagnostic Logging**: Enhanced agent startup diagnostics for troubleshooting
+  - Step-by-step initialization progress with colored output
+  - `getDisabledReason()` method in `AutoConfigurator` for clear error messages
+  - ConfigLoader now logs which config files are checked and loaded
+
+### Changed
+- **Console Output Improvements**: Refactored console output to prevent Maven Surefire stream fragmentation
+  - Replaced Unicode box-drawing characters (`╔═╗║`) with ASCII equivalents (`+|-`)
+  - Single `StringBuilder` + `System.out.print()` instead of multiple `println()` calls
+  - Added ANSI color support (cyan headers, green healed, yellow original, magenta low-confidence)
+  - UTF-8 PrintStream for international character support
+- **Agent Banner**: Changed from `System.err` to colored `System.out` output
+  - Banner now uses ANSI colors for better visibility
+  - Shows ACTIVE (green) or INACTIVE (yellow) status prominently
+- **Provider Availability Check**: `isProviderAvailable()` now accepts `LlmConfig` parameter
+  - Checks config values (base_url, api_key_env) before falling back to environment variables
+  - More accurate availability detection for Azure OpenAI
+
+### Fixed
+- **HTML Report `%` Character Escaping**: Fixed `IllegalFormatException` when locators contain `%` characters
+  - Added `escapeForFormat()` method to escape `%` as `%%` for `String.format()`
+  - Fixed CSS `border-radius: 50%` to `50%%` in HTML template
+- **Healing Summary Deduplication**: Prevent duplicate heal records for the same locator
+  - Added `recordedLocators` set using `ConcurrentHashMap.newKeySet()`
+  - Deduplicates based on original locator string
+- **Shutdown Hook ClassNotFoundException**: Fixed `ClassNotFoundException: HealingSummary` in JVM shutdown
+  - Pre-load `HealingSummary` and `HealingReportGenerator` instances before registering shutdown hook
+  - Avoids class loading during shutdown when classloader may be unavailable
+
+---
+
 ## [1.0.4] - 2025-12-21
 
 ### Added
@@ -153,6 +194,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| 1.0.5 | 2025-12-23 | Screenshot evidence in reports, healed locator caching, console output fixes |
 | 1.0.4 | 2025-12-21 | Vision LLM support, Playwright integration, comprehensive test coverage |
 | 1.0.3 | 2025-12-21 | Community files, README improvements |
 | 1.0.2 | 2025-12-20 | Report generation, graceful provider handling |

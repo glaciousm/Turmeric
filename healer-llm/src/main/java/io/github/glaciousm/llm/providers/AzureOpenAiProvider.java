@@ -52,8 +52,20 @@ public class AzureOpenAiProvider implements LlmProvider {
 
     @Override
     public boolean isAvailable() {
-        String endpoint = getEndpoint(null);
-        String apiKey = getApiKey(null);
+        return isAvailable(null);
+    }
+
+    @Override
+    public boolean isAvailable(LlmConfig config) {
+        // Check config first, then fall back to environment variables
+        String endpoint = getEndpoint(config);
+        String apiKey = getApiKey(config);
+
+        // Log for debugging
+        System.err.println("[Intent Healer] AzureOpenAiProvider.isAvailable() - endpoint=" +
+            (endpoint != null && !endpoint.isEmpty() ? "configured" : "NOT SET") + ", apiKey=" +
+            (apiKey != null && !apiKey.isEmpty() ? "configured" : "NOT SET"));
+
         return endpoint != null && !endpoint.isEmpty() && apiKey != null && !apiKey.isEmpty();
     }
 

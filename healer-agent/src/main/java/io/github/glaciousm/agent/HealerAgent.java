@@ -45,6 +45,12 @@ public class HealerAgent {
 
     private static final Logger logger = LoggerFactory.getLogger(HealerAgent.class);
 
+    // ANSI color codes for console output
+    private static final String RESET = "\u001B[0m";
+    private static final String CYAN = "\u001B[36m";
+    private static final String GREEN = "\u001B[32m";
+    private static final String YELLOW = "\u001B[33m";
+
     private static volatile boolean initialized = false;
 
     /**
@@ -54,6 +60,10 @@ public class HealerAgent {
      * @param inst instrumentation instance for bytecode manipulation
      */
     public static void premain(String args, Instrumentation inst) {
+        // DIAGNOSTIC: Print immediately to verify agent is loading
+        System.out.println(CYAN + "[Intent Healer] >>> premain() called <<<" + RESET);
+        System.out.flush();
+
         initialize(args, inst, "premain");
     }
 
@@ -68,7 +78,12 @@ public class HealerAgent {
     }
 
     private static synchronized void initialize(String args, Instrumentation inst, String mode) {
+        // DIAGNOSTIC: Print before any initialization
+        System.out.println(CYAN + "[Intent Healer] Starting initialization via " + mode + RESET);
+        System.out.flush();
+
         if (initialized) {
+            System.out.println(YELLOW + "[Intent Healer] Already initialized, skipping" + RESET);
             logger.debug("Agent already initialized, skipping");
             return;
         }
@@ -76,40 +91,61 @@ public class HealerAgent {
 
         try {
             // Initialize configuration and healing engine
+            System.out.println(CYAN + "[Intent Healer] Calling AutoConfigurator.initialize()..." + RESET);
+            System.out.flush();
             AutoConfigurator.initialize();
+            System.out.println(GREEN + "[Intent Healer] AutoConfigurator initialized successfully" + RESET);
+            System.out.flush();
 
             if (!AutoConfigurator.isEnabled()) {
-                System.out.println("[Intent Healer] Agent loaded but DISABLED (healer.enabled=false)");
+                System.out.println(YELLOW + "[Intent Healer] Agent loaded but DISABLED. Reason: " + AutoConfigurator.getDisabledReason() + RESET);
                 return;
             }
 
             // Print startup banner
+            System.out.println(CYAN + "[Intent Healer] Printing banner..." + RESET);
             AgentBanner.print();
 
             // Install ByteBuddy transformer
+            System.out.println(CYAN + "[Intent Healer] Installing ByteBuddy transformer..." + RESET);
             installTransformer(inst);
+            System.out.println(GREEN + "[Intent Healer] ByteBuddy transformer installed" + RESET);
+
+            // Pre-load classes to avoid ClassNotFoundException in shutdown hook
+            final HealingSummary healingSummary = HealingSummary.getInstance();
+            final HealingReportGenerator reportGenerator;
+            HealerConfig cfg = AutoConfigurator.getConfig();
+            if (cfg != null && cfg.getReport() != null && cfg.getReport().isEnabled()) {
+                reportGenerator = new HealingReportGenerator(cfg.getReport());
+            } else {
+                reportGenerator = null;
+            }
 
             // Register shutdown hook to print healing summary and generate reports
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
                 try {
-                    // Print console summary
-                    HealingSummary.getInstance().printSummary();
+                    // Print console summary (use pre-loaded instance)
+                    healingSummary.printSummary();
 
                     // Generate HTML/JSON reports
-                    HealerConfig cfg = AutoConfigurator.getConfig();
-                    if (cfg != null && cfg.getReport() != null && cfg.getReport().isEnabled()) {
-                        HealingReportGenerator generator = new HealingReportGenerator(cfg.getReport());
-                        generator.generateReports();
+                    if (reportGenerator != null) {
+                        System.out.println(CYAN + "[Intent Healer] Generating reports..." + RESET);
+                        reportGenerator.generateReports();
+                        System.out.println(GREEN + "[Intent Healer] Reports generated" + RESET);
                     }
                 } catch (Exception e) {
-                    logger.debug("Failed to generate healing reports: {}", e.getMessage());
+                    System.out.println(YELLOW + "[Intent Healer] Failed to generate healing reports: " + e.getMessage() + RESET);
+                    e.printStackTrace(System.out);
+                    logger.error("Failed to generate healing reports", e);
                 }
             }, "intent-healer-summary"));
 
             logger.info("Intent Healer Agent initialized successfully via {}", mode);
+            System.out.println(GREEN + "[Intent Healer] Agent initialized successfully via " + mode + RESET);
 
         } catch (Exception e) {
-            System.err.println("[Intent Healer] Agent initialization failed: " + e.getMessage());
+            System.out.println(YELLOW + "[Intent Healer] Agent initialization failed: " + e.getMessage() + RESET);
+            e.printStackTrace(System.out);
             logger.error("Agent initialization failed", e);
         }
     }

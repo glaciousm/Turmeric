@@ -59,6 +59,17 @@ public class LlmOrchestrator {
      * @return true if the provider is available and configured
      */
     public boolean isProviderAvailable(String providerName) {
+        return isProviderAvailable(providerName, null);
+    }
+
+    /**
+     * Check if a provider is available with the given configuration.
+     *
+     * @param providerName the name of the provider to check
+     * @param config the LLM configuration (to check base_url, api_key_env, etc.)
+     * @return true if the provider is available and configured
+     */
+    public boolean isProviderAvailable(String providerName, LlmConfig config) {
         if (providerName == null || providerName.isEmpty()) {
             return false;
         }
@@ -66,7 +77,7 @@ public class LlmOrchestrator {
         if (provider == null) {
             return false;
         }
-        return provider.isAvailable();
+        return provider.isAvailable(config);
     }
 
     /**

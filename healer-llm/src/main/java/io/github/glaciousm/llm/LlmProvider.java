@@ -57,6 +57,14 @@ public interface LlmProvider {
     boolean isAvailable();
 
     /**
+     * Check if the provider is available with the given configuration.
+     * This allows checking config values (like base_url) before falling back to env vars.
+     */
+    default boolean isAvailable(LlmConfig config) {
+        return isAvailable();
+    }
+
+    /**
      * Check if this provider supports vision/multimodal inputs.
      * Providers that support vision can analyze screenshots alongside DOM data.
      *

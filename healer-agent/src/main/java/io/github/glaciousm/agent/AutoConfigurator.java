@@ -16,6 +16,7 @@ import java.util.Base64;
 import java.util.Collections;
 import java.util.Map;
 import java.util.WeakHashMap;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Auto-configures the Intent Healer components for agent-based operation.
@@ -37,6 +38,9 @@ public class AutoConfigurator {
     // Track registered drivers (WeakHashMap allows garbage collection)
     private static final Map<WebDriver, SnapshotBuilder> driverSnapshots =
             Collections.synchronizedMap(new WeakHashMap<>());
+
+    // Cache healed locators to avoid repeated LLM calls for the same broken locator
+    private static final Map<String, By> healedLocatorCache = new ConcurrentHashMap<>();
 
     private static final StackTraceAnalyzer stackTraceAnalyzer = new StackTraceAnalyzer();
 
@@ -63,7 +67,7 @@ public class AutoConfigurator {
 
                 // Check if the configured provider is available (has API key, etc.)
                 String providerName = config.getLlm() != null ? config.getLlm().getProvider() : "mock";
-                providerAvailable = llmOrchestrator.isProviderAvailable(providerName);
+                providerAvailable = llmOrchestrator.isProviderAvailable(providerName, config.getLlm());
 
                 if (!providerAvailable) {
                     logger.warn("LLM provider '{}' is not available (missing API key or configuration). " +
@@ -90,6 +94,21 @@ public class AutoConfigurator {
      */
     public static boolean isEnabled() {
         return config != null && config.isEnabled() && engine != null && providerAvailable;
+    }
+
+    /**
+     * Get the reason why healing is disabled (for diagnostics).
+     */
+    public static String getDisabledReason() {
+        if (config == null) return "config is null";
+        if (!config.isEnabled()) return "healer.enabled=false in config";
+        if (engine == null) return "engine failed to initialize";
+        if (!providerAvailable) {
+            String provider = config.getLlm() != null ? config.getLlm().getProvider() : "unknown";
+            String apiKeyEnv = config.getLlm() != null ? config.getLlm().getApiKeyEnv() : "unknown";
+            return "LLM provider '" + provider + "' not available (check env var: " + apiKeyEnv + ")";
+        }
+        return "unknown";
     }
 
     /**
@@ -135,6 +154,21 @@ public class AutoConfigurator {
     public static WebElement heal(WebDriver driver, By by, Throwable originalException) {
         if (!isEnabled()) {
             return null;
+        }
+
+        String originalLocatorKey = by.toString();
+
+        // Check cache first - avoid repeated LLM calls for same broken locator
+        By cachedHealedBy = healedLocatorCache.get(originalLocatorKey);
+        if (cachedHealedBy != null) {
+            logger.debug("Using cached healed locator for: {}", originalLocatorKey);
+            try {
+                return driver.findElement(cachedHealedBy);
+            } catch (NoSuchElementException e) {
+                // Cached locator no longer works, remove from cache and proceed with healing
+                healedLocatorCache.remove(originalLocatorKey);
+                logger.debug("Cached locator failed, re-healing: {}", originalLocatorKey);
+            }
         }
 
         SnapshotBuilder snapshotBuilder = driverSnapshots.get(driver);
@@ -185,6 +219,10 @@ public class AutoConfigurator {
                 By healedBy = locatorInfoToBy(healedLocator);
 
                 logger.info("Healed locator: {} -> {}", by, healedBy);
+
+                // Cache the healed locator for future calls
+                healedLocatorCache.put(originalLocatorKey, healedBy);
+                logger.debug("Cached healed locator: {} -> {}", originalLocatorKey, healedBy);
 
                 // Capture screenshot AFTER successful healing
                 String afterScreenshotBase64 = captureScreenshotBase64(driver);
