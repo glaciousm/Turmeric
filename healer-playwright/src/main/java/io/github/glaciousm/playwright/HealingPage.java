@@ -375,13 +375,13 @@ public class HealingPage {
 
                 String afterScreenshotBase64 = captureScreenshotBase64();
 
-                HealingSummary.getInstance().recordHealWithScreenshots(
+                // Record heal for summary report with full source location
+                HealingSummary.getInstance().recordHealWithLocation(
                         effectiveStepText,
                         originalSelector,
                         healedSelector,
                         result.getConfidence(),
-                        sourceLocation != null ? sourceLocation.getFilePath() : null,
-                        sourceLocation != null ? sourceLocation.getLineNumber() : 0,
+                        sourceLocation,
                         beforeScreenshotBase64,
                         afterScreenshotBase64
                 );

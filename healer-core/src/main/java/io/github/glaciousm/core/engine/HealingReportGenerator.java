@@ -102,6 +102,22 @@ public class HealingReportGenerator {
                 heal.put("sourceFile", h.sourceFile());
                 heal.put("lineNumber", h.lineNumber());
             }
+            // Add new fields for enhanced location info
+            if (h.className() != null) {
+                heal.put("className", h.className());
+            }
+            if (h.methodName() != null) {
+                heal.put("methodName", h.methodName());
+            }
+            if (h.featureName() != null) {
+                heal.put("featureName", h.featureName());
+            }
+            if (h.scenarioName() != null) {
+                heal.put("scenarioName", h.scenarioName());
+            }
+            if (h.locatorCode() != null) {
+                heal.put("locatorCode", h.locatorCode());
+            }
             return heal;
         }).toList());
 
@@ -231,6 +247,44 @@ public class HealingReportGenerator {
                             color: var(--muted);
                             margin-top: 0.5rem;
                         }
+                        .test-context {
+                            display: flex;
+                            flex-wrap: wrap;
+                            gap: 0.5rem;
+                            margin-bottom: 1rem;
+                        }
+                        .context-badge {
+                            display: inline-block;
+                            padding: 0.25rem 0.75rem;
+                            border-radius: 9999px;
+                            font-size: 0.75rem;
+                            font-weight: 500;
+                        }
+                        .context-badge.feature {
+                            background: #f3e8ff;
+                            color: #7c3aed;
+                        }
+                        .context-badge.scenario {
+                            background: #dbeafe;
+                            color: #2563eb;
+                        }
+                        .class-method {
+                            font-size: 0.75rem;
+                            color: var(--muted);
+                            margin-top: 0.25rem;
+                            font-family: 'Monaco', 'Menlo', monospace;
+                        }
+                        .code-snippet {
+                            background: #1e293b;
+                            color: #e2e8f0;
+                            padding: 0.75rem 1rem;
+                            border-radius: 6px;
+                            font-family: 'Monaco', 'Menlo', monospace;
+                            font-size: 0.8rem;
+                            margin-top: 0.75rem;
+                            overflow-x: auto;
+                            border-left: 3px solid var(--primary);
+                        }
                         .screenshots {
                             margin-top: 1rem;
                             border-top: 1px solid var(--border);
@@ -321,6 +375,25 @@ public class HealingReportGenerator {
             html.append("""
                     <div class="heal-card">
                         <h3><span class="number">%d</span>%s</h3>
+                    """.formatted(index, stepText));
+
+            // Add test context badges (feature/scenario) if available
+            if (heal.hasTestContext()) {
+                html.append("        <div class=\"test-context\">\n");
+                if (heal.featureName() != null && !heal.featureName().isEmpty()) {
+                    html.append(String.format(
+                        "            <span class=\"context-badge feature\">%s</span>\n",
+                        escapeForFormat(escapeHtml(heal.featureName()))));
+                }
+                if (heal.scenarioName() != null && !heal.scenarioName().isEmpty()) {
+                    html.append(String.format(
+                        "            <span class=\"context-badge scenario\">%s</span>\n",
+                        escapeForFormat(escapeHtml(heal.scenarioName()))));
+                }
+                html.append("        </div>\n");
+            }
+
+            html.append("""
                         <div class="label">Original Locator</div>
                         <div class="locator-box original">%s</div>
                         <div class="label">Healed To</div>
@@ -328,7 +401,6 @@ public class HealingReportGenerator {
                         <button class="copy-btn" onclick="copyToClipboard('heal-%d')">Copy Healed Locator</button>
                         <span class="confidence %s">%.0f%% confidence</span>
                     """.formatted(
-                    index, stepText,
                     originalLocator,
                     index, healedLocator,
                     index,
@@ -339,6 +411,23 @@ public class HealingReportGenerator {
                 html.append("""
                         <div class="source-location">Location: %s:%d</div>
                         """.formatted(escapeForFormat(escapeHtml(heal.sourceFile())), heal.lineNumber()));
+            }
+
+            // Add class.method() display if available
+            if (heal.hasClassMethodInfo()) {
+                String shortClassName = heal.getShortClassName();
+                String methodName = heal.methodName() != null ? heal.methodName() : "";
+                html.append(String.format(
+                    "        <div class=\"class-method\">%s.%s()</div>\n",
+                    escapeForFormat(escapeHtml(shortClassName)),
+                    escapeForFormat(escapeHtml(methodName))));
+            }
+
+            // Add code snippet if available
+            if (heal.locatorCode() != null && !heal.locatorCode().isEmpty()) {
+                html.append(String.format(
+                    "        <div class=\"code-snippet\">%s</div>\n",
+                    escapeForFormat(escapeHtml(heal.locatorCode()))));
             }
 
             // Add screenshots if available
