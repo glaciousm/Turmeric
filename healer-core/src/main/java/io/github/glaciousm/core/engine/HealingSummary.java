@@ -1,5 +1,8 @@
 package io.github.glaciousm.core.engine;
 
+import io.github.glaciousm.core.context.TestContext;
+import io.github.glaciousm.core.model.SourceLocation;
+
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -63,6 +66,58 @@ public class HealingSummary {
                 healedLocators.add(new HealedLocator(
                     stepText, originalLocator, healedLocator, confidence, sourceFile, lineNumber,
                     beforeScreenshotBase64, afterScreenshotBase64
+                ));
+            }
+        }
+    }
+
+    /**
+     * Record a healed locator with full SourceLocation for enhanced context.
+     * Automatically reads feature/scenario names from TestContext if available.
+     */
+    public void recordHealWithLocation(String stepText, String originalLocator, String healedLocator,
+                                       double confidence, SourceLocation sourceLocation,
+                                       String beforeScreenshotBase64, String afterScreenshotBase64) {
+        if (enabled) {
+            String key = originalLocator;
+            if (recordedLocators.add(key)) {
+                // Read feature/scenario from ThreadLocal context if available
+                String featureName = TestContext.getFeatureName();
+                String scenarioName = TestContext.getScenarioName();
+
+                healedLocators.add(new HealedLocator(
+                    stepText, originalLocator, healedLocator, confidence,
+                    sourceLocation != null ? sourceLocation.getFilePath() : null,
+                    sourceLocation != null ? sourceLocation.getLineNumber() : 0,
+                    beforeScreenshotBase64, afterScreenshotBase64,
+                    sourceLocation != null ? sourceLocation.getClassName() : null,
+                    sourceLocation != null ? sourceLocation.getMethodName() : null,
+                    featureName, scenarioName,
+                    sourceLocation != null ? sourceLocation.getLocatorCode() : null
+                ));
+            }
+        }
+    }
+
+    /**
+     * Record a healed locator with full test context (for Cucumber/BDD tests).
+     */
+    public void recordHealWithFullContext(String stepText, String originalLocator, String healedLocator,
+                                          double confidence, SourceLocation sourceLocation,
+                                          String featureName, String scenarioName,
+                                          String beforeScreenshotBase64, String afterScreenshotBase64) {
+        if (enabled) {
+            String key = originalLocator;
+            if (recordedLocators.add(key)) {
+                healedLocators.add(new HealedLocator(
+                    stepText, originalLocator, healedLocator, confidence,
+                    sourceLocation != null ? sourceLocation.getFilePath() : null,
+                    sourceLocation != null ? sourceLocation.getLineNumber() : 0,
+                    beforeScreenshotBase64, afterScreenshotBase64,
+                    sourceLocation != null ? sourceLocation.getClassName() : null,
+                    sourceLocation != null ? sourceLocation.getMethodName() : null,
+                    featureName, scenarioName,
+                    sourceLocation != null ? sourceLocation.getLocatorCode() : null
                 ));
             }
         }
@@ -140,6 +195,20 @@ public class HealingSummary {
         int index = 1;
         for (HealedLocator heal : healedLocators) {
             sb.append(String.format("  [%d] %s\n", index++, truncate(heal.stepText(), 70)));
+
+            // Show test context (feature/scenario) if available
+            if (heal.hasTestContext()) {
+                sb.append(MAGENTA);
+                if (heal.featureName() != null && !heal.featureName().isEmpty()) {
+                    sb.append(String.format("      [%s]", heal.featureName()));
+                }
+                if (heal.scenarioName() != null && !heal.scenarioName().isEmpty()) {
+                    sb.append(String.format(" [%s]", truncate(heal.scenarioName(), 50)));
+                }
+                sb.append("\n");
+                sb.append(RESET);
+            }
+
             sb.append("      +-----------------------------------------------------------------------\n");
             sb.append(YELLOW);
             sb.append(String.format("      | ORIGINAL:  %s\n", heal.originalLocator()));
@@ -152,6 +221,16 @@ public class HealingSummary {
             sb.append(RESET);
             if (heal.sourceFile() != null && !heal.sourceFile().isEmpty()) {
                 sb.append(String.format("      | Location: %s:%d\n", heal.sourceFile(), heal.lineNumber()));
+            }
+            // Show class.method() if available
+            if (heal.hasClassMethodInfo()) {
+                String shortClass = heal.getShortClassName();
+                String method = heal.methodName() != null ? heal.methodName() : "";
+                sb.append(String.format("      | Class: %s.%s()\n", shortClass, method));
+            }
+            // Show code snippet if available
+            if (heal.locatorCode() != null && !heal.locatorCode().isEmpty()) {
+                sb.append(String.format("      | Code: %s\n", truncate(heal.locatorCode(), 60)));
             }
             sb.append("      +-----------------------------------------------------------------------\n");
             sb.append("\n");
@@ -190,7 +269,7 @@ public class HealingSummary {
     }
 
     /**
-     * Record of a healed locator with optional visual evidence.
+     * Record of a healed locator with optional visual evidence and test context.
      */
     public record HealedLocator(
         String stepText,
@@ -200,13 +279,63 @@ public class HealingSummary {
         String sourceFile,
         int lineNumber,
         String beforeScreenshotBase64,
-        String afterScreenshotBase64
+        String afterScreenshotBase64,
+        // New fields for enhanced location info
+        String className,       // e.g., "com.example.LoginPage"
+        String methodName,      // e.g., "clickLoginButton"
+        String featureName,     // e.g., "login.feature" (for Cucumber tests)
+        String scenarioName,    // e.g., "User logs in with valid credentials"
+        String locatorCode      // e.g., "driver.findElement(By.id(\"login\"))"
     ) {
+        /**
+         * Backward-compatible constructor for existing callers.
+         */
+        public HealedLocator(
+            String stepText,
+            String originalLocator,
+            String healedLocator,
+            double confidence,
+            String sourceFile,
+            int lineNumber,
+            String beforeScreenshotBase64,
+            String afterScreenshotBase64
+        ) {
+            this(stepText, originalLocator, healedLocator, confidence,
+                 sourceFile, lineNumber, beforeScreenshotBase64, afterScreenshotBase64,
+                 null, null, null, null, null);
+        }
+
         /**
          * Check if this heal has visual evidence (screenshots).
          */
         public boolean hasVisualEvidence() {
             return beforeScreenshotBase64 != null && afterScreenshotBase64 != null;
+        }
+
+        /**
+         * Check if this heal has test context (feature/scenario names).
+         */
+        public boolean hasTestContext() {
+            return (featureName != null && !featureName.isEmpty())
+                || (scenarioName != null && !scenarioName.isEmpty());
+        }
+
+        /**
+         * Check if this heal has class/method information.
+         */
+        public boolean hasClassMethodInfo() {
+            return className != null && !className.isEmpty();
+        }
+
+        /**
+         * Get a short class name (without package).
+         */
+        public String getShortClassName() {
+            if (className == null || className.isEmpty()) {
+                return null;
+            }
+            int lastDot = className.lastIndexOf('.');
+            return lastDot >= 0 ? className.substring(lastDot + 1) : className;
         }
     }
 }

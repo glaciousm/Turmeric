@@ -3,6 +3,7 @@ package io.github.glaciousm.cucumber;
 import io.github.glaciousm.core.config.AutoUpdateConfig;
 import io.github.glaciousm.core.config.ConfigLoader;
 import io.github.glaciousm.core.config.HealerConfig;
+import io.github.glaciousm.core.context.TestContext;
 import io.github.glaciousm.core.engine.HealingEngine;
 import io.github.glaciousm.core.engine.patch.SourceCodeUpdater;
 import io.github.glaciousm.core.engine.patch.ValidatedHealRegistry;
@@ -90,10 +91,23 @@ public class HealerCucumberPlugin implements ConcurrentEventListener {
     private void onTestCaseStarted(TestCaseStarted event) {
         String scenarioId = event.getTestCase().getId().toString();
         ScenarioContext context = new ScenarioContext();
-        context.setFeatureName(event.getTestCase().getUri().toString());
+
+        // Extract feature name from URI (e.g., "file:src/test/resources/features/login.feature" -> "login.feature")
+        String featureUri = event.getTestCase().getUri().toString();
+        String featureName = featureUri;
+        int lastSlash = featureUri.lastIndexOf('/');
+        if (lastSlash >= 0) {
+            featureName = featureUri.substring(lastSlash + 1);
+        }
+
+        context.setFeatureName(featureName);
         context.setScenarioName(event.getTestCase().getName());
         context.setTags(event.getTestCase().getTags());
         scenarioContexts.put(scenarioId, context);
+
+        // Set TestContext for HealingSummary to pick up
+        TestContext.setFeatureName(featureName);
+        TestContext.setScenarioName(event.getTestCase().getName());
 
         logger.debug("Starting scenario: {}", context.getScenarioName());
     }
@@ -114,6 +128,9 @@ public class HealerCucumberPlugin implements ConcurrentEventListener {
             // Discard pending heals for failed scenario
             healRegistry.discardPending(scenarioId);
         }
+
+        // Clear TestContext after scenario
+        TestContext.clear();
     }
 
     /**

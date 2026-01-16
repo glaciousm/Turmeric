@@ -227,14 +227,13 @@ public class AutoConfigurator {
                 // Capture screenshot AFTER successful healing
                 String afterScreenshotBase64 = captureScreenshotBase64(driver);
 
-                // Record heal for summary report with visual evidence
-                HealingSummary.getInstance().recordHealWithScreenshots(
+                // Record heal for summary report with full source location
+                HealingSummary.getInstance().recordHealWithLocation(
                         effectiveStepText,
                         by.toString(),
                         healedBy.toString(),
                         result.getConfidence(),
-                        sourceLocation != null ? sourceLocation.getFilePath() : null,
-                        sourceLocation != null ? sourceLocation.getLineNumber() : 0,
+                        sourceLocation,
                         beforeScreenshotBase64,
                         afterScreenshotBase64
                 );
