@@ -17,18 +17,18 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class AgentBannerTest {
 
-    private final PrintStream originalErr = System.err;
-    private ByteArrayOutputStream capturedErr;
+    private final PrintStream originalOut = System.out;
+    private ByteArrayOutputStream capturedOut;
 
     @BeforeEach
     void setUp() {
-        capturedErr = new ByteArrayOutputStream();
-        System.setErr(new PrintStream(capturedErr));
+        capturedOut = new ByteArrayOutputStream();
+        System.setOut(new PrintStream(capturedOut));
     }
 
     @AfterEach
     void tearDown() {
-        System.setErr(originalErr);
+        System.setOut(originalOut);
     }
 
     @Nested
@@ -40,7 +40,7 @@ class AgentBannerTest {
         void printsActiveBanner() {
             AgentBanner.print(true);
 
-            String output = capturedErr.toString();
+            String output = capturedOut.toString();
             assertThat(output).contains("INTENT HEALER AGENT");
             assertThat(output).contains("ACTIVE");
             assertThat(output).contains("Mode:");
@@ -55,7 +55,7 @@ class AgentBannerTest {
         void printsInactiveBanner() {
             AgentBanner.print(false);
 
-            String output = capturedErr.toString();
+            String output = capturedOut.toString();
             assertThat(output).contains("INTENT HEALER AGENT");
             assertThat(output).contains("INACTIVE");
             assertThat(output).contains("DISABLED");
@@ -68,7 +68,7 @@ class AgentBannerTest {
         void includesConfigInfo() {
             AgentBanner.print(true);
 
-            String output = capturedErr.toString();
+            String output = capturedOut.toString();
             // Default values when config is not loaded
             assertThat(output).containsAnyOf("AUTO_SAFE", "mock", "heuristic");
         }
@@ -83,7 +83,7 @@ class AgentBannerTest {
         void printsMinimalBanner() {
             AgentBanner.printMinimal();
 
-            String output = capturedErr.toString();
+            String output = capturedOut.toString();
             assertThat(output).contains("[Intent Healer] Agent active");
             assertThat(output).contains("provider:");
             // Should be a single line (or close to it)
@@ -100,7 +100,7 @@ class AgentBannerTest {
         void hasProperBorders() {
             AgentBanner.print(true);
 
-            String output = capturedErr.toString();
+            String output = capturedOut.toString();
             assertThat(output).contains("+===============================================================+");
             assertThat(output).contains("+---------------------------------------------------------------+");
         }
@@ -110,13 +110,14 @@ class AgentBannerTest {
         void hasAlignedContent() {
             AgentBanner.print(true);
 
-            String output = capturedErr.toString();
-            // Check that lines with | start and end properly
+            String output = capturedOut.toString();
+            // Check that lines with | start and end properly (accounting for ANSI codes)
             for (String line : output.split("\n")) {
-                String trimmedLine = line.trim();
-                if (trimmedLine.contains("Mode:") || trimmedLine.contains("Provider:") || trimmedLine.contains("Model:") || trimmedLine.contains("Healing:")) {
-                    assertThat(trimmedLine).startsWith("|");
-                    assertThat(trimmedLine).endsWith("|");
+                // Strip ANSI escape codes for content validation
+                String strippedLine = line.replaceAll("\u001B\\[[0-9;]*m", "").trim();
+                if (strippedLine.contains("Mode:") || strippedLine.contains("Provider:") || strippedLine.contains("Model:") || strippedLine.contains("Healing:")) {
+                    assertThat(strippedLine).startsWith("|");
+                    assertThat(strippedLine).endsWith("|");
                 }
             }
         }
